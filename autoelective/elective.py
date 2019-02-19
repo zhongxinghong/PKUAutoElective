@@ -101,7 +101,7 @@ class ElectiveClient(ClientMixin, metaclass=Singleton):
 
     def get_SupplyCancel(self, **kwargs):
         """ 补退选 """
-        headers = self.__get_headers_with_referer(kwargs)
+        headers = self.__get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel) # 此 Referer 相当于刷新页面
         resp = self._get(ElectiveLinks.SupplyCancel,
             headers = headers,
             hooks = self.__hooks_check_title,

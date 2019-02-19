@@ -43,7 +43,11 @@ def get_table_trs(table):
     return table.xpath('.//tr[@class="datagrid-odd" or @class="datagrid-even"]')
 
 def get_title(tree):
-    return tree.find('.//head/title').text
+    title = tree.find('.//head/title')
+    if title is not None: # 双学位 sso_login 后先到 主修/辅双 选择页，这个页面没有 title 标签
+        return title.text
+    else:
+        return None
 
 def get_errInfo(tree):
     tds = tree.xpath(".//table//table//table//td")

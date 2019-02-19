@@ -9,7 +9,7 @@ from .exceptions import StatusCodeError, ServerError, IAAANotSuccessError, Syste
     InvalidTokenError, InvalidSessionError, CaughtCheatingError, InvalidOperatingTimeError,\
     CourseIndexError, CaptchaError, TipsException, ConflictingTimeError, RepeatedElectionError,\
     OperationTimedOutError, ElectivePermissionError, ElectionSuccess, ElectionFailedError,\
-    CreditLimitedError
+    CreditLimitedError, MutuallyExclusiveCourseError
 
 
 __all__ = [
@@ -35,6 +35,7 @@ __logger = ConsoleLogger("hook")
 #__regex_errInfo = re.compile(r"<strong>出错提示:</strong>(\S+?)<br>", re.S)
 __regex_errOperatingTime = re.compile(r'目前不是(\S+?)时间，因此不能进行相应操作。')
 __regex_electionSuccess = re.compile(r'补选课程(\S+)成功，请查看已选上列表确认，并查看选课结果。')
+__regex_mutex = re.compile(r'(\S+)与(\S+)只能选其一门。')
 
 def get_hooks(*fn):
     return {"response": fn}
@@ -65,7 +66,9 @@ def check_iaaa_success(r, **kwargs):
 def check_elective_title(r, **kwargs):
     assert hasattr(r, "_tree")
     title = get_title(r._tree)
-    if title == "系统异常":
+    if title is None:
+        pass
+    elif title == "系统异常":
         #err = __regex_errInfo.search(r.text).group(1)
         err = get_errInfo(r._tree)
         if err == "token无效": # sso_login 时出现
@@ -102,6 +105,8 @@ def check_elective_tips(r, **kwargs):
         raise ElectivePermissionError(response=r, msg=tips)
     elif __regex_electionSuccess.search(tips):
         raise ElectionSuccess(response=r, msg=tips)
+    elif __regex_mutex.search(tips):
+        raise MutuallyExclusiveCourseError(response=r, msg=tips)
     else:
         __logger.warning("Unknown tips: %s" % tips)
         pass

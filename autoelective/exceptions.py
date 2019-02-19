@@ -46,6 +46,7 @@ __all__ = [
                 "ElectivePermissionError",
                 "ElectionFailedError",
                 "CreditLimitedError",
+                "MutuallyExclusiveCourseError",
 
 ]
 
@@ -195,3 +196,7 @@ class ElectionFailedError(TipsException):
 class CreditLimitedError(TipsException):
     code = 327
     desc = "您本学期所选课程的总学分已经超过规定学分上限。"
+
+class MutuallyExclusiveCourseError(TipsException):
+    code = 328
+    desc = "只能选其一门。"

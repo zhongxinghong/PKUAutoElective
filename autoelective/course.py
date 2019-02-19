@@ -12,7 +12,7 @@ class Course(ImmutableAttrsMixin):
 
     def __init__(self, name, classNo, school, status=None, href=None):
         self.name = name
-        self.classNo = classNo
+        self.classNo = int(classNo) # 确保 01 与 1 为同班号，因为表格软件将 01 视为 1
         self.school = school
         self.status = status # (limit, current) 限选 / 已选
         self.href = href     # 选课链接

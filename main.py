@@ -17,7 +17,7 @@ from autoelective.logger import ConsoleLogger, FileLogger
 from autoelective.exceptions import InvalidTokenError, InvalidSessionError, ServerError,\
     StatusCodeError, NotInCoursePlanException, SystemException, CaughtCheatingError,\
     ConflictingTimeError, RepeatedElectionError, OperationTimedOutError, ElectivePermissionError,\
-    ElectionSuccess, ElectionFailedError, CreditLimitedError
+    ElectionSuccess, ElectionFailedError, CreditLimitedError, MutuallyExclusiveCourseError
 
 
 iaaa = IAAAClient()
@@ -87,6 +87,7 @@ def task_login():
     """ 登录 """
     cout.info("Try to Login")
     iaaa.oauth_login()
+    elective.clean_cookies() # 清除旧的 cookies ，避免影响本次登录
     elective.sso_login(iaaa.token)
     cout.info("Login success !")
 
@@ -137,7 +138,7 @@ def task_validate_captcha():
 def main():
 
     loop = 0
-    loginRequired = False
+    loginRequired = True
     goals = load_course_csv()
     ignored = [] # (course, reason)
 
@@ -204,6 +205,10 @@ def main():
                         ferr.error(e)
                         cout.warning("CreditLimitedError encountered")
                         ignored.append( (get_concise_course(course), "Credit Limited") )
+                    except MutuallyExclusiveCourseError as e:
+                        ferr.error(e)
+                        cout.warning("MutuallyExclusiveCourseError encountered")
+                        ignored.append( (get_concise_course(course), "Mutex") )
                     except ElectionSuccess as e:
                         cout.info("%s is ELECTED !" % course) # 不从此处加入 ignored ，而是在下回合根据实际选课结果来决定是否忽略
                     except ElectionFailedError as e:
