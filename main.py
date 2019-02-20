@@ -12,12 +12,13 @@ from autoelective.elective import ElectiveClient
 from autoelective.captcha import CaptchaRecognizer
 from autoelective.course import Course
 from autoelective.config import generalCfg
-from autoelective.parser import load_course_csv, get_tables, get_courses, get_courses_with_detail
+from autoelective.parser import load_course_csv, get_tables, get_courses, get_courses_with_detail, get_sida
 from autoelective.logger import ConsoleLogger, FileLogger
 from autoelective.exceptions import InvalidTokenError, InvalidSessionError, ServerError,\
     StatusCodeError, NotInCoursePlanException, SystemException, CaughtCheatingError,\
     ConflictingTimeError, RepeatedElectionError, OperationTimedOutError, ElectivePermissionError,\
-    ElectionSuccess, ElectionFailedError, CreditLimitedError, MutuallyExclusiveCourseError
+    ElectionSuccess, ElectionFailedError, CreditLimitedError, MutuallyExclusiveCourseError,\
+    NoAuthInfoError, SharedSessionError, UnsupportedIdentityError
 
 
 iaaa = IAAAClient()
@@ -30,6 +31,12 @@ ferr = FileLogger("main.error") # main 的子日志，同步输出到 console
 interval = generalCfg.getint("client", "Refresh_Interval")
 deviation = generalCfg.getfloat("client", "Refresh_Interval_Random_Deviation")
 
+isDualDegree = generalCfg.getboolean("user", "DualDegree")
+if isDualDegree:
+    identity = generalCfg.get("user", "Identity")
+    if identity not in ("bzx", "bfx"):
+        raise UnsupportedIdentityError("Identity must be in ('bzx','bfx')")
+
 
 def get_refresh_interval():
     if deviation <= 0:
@@ -37,9 +44,6 @@ def get_refresh_interval():
     else:
         delta = (random.random() * 2 - 1) * deviation * interval
         return interval + delta
-
-def get_concise_course(course):
-    return Course(course.name, course.classNo, course.school)
 
 def has_candidates(goals, ignored):
     _ignored = [x[0] for x in ignored]
@@ -82,13 +86,17 @@ def task_print_ignored(ignored):
     cout.info("# -----------------------")
     cout.info("## END Ignored courses ##")
 
-
 def task_login():
     """ 登录 """
     cout.info("Try to Login")
     iaaa.oauth_login()
     elective.clean_cookies() # 清除旧的 cookies ，避免影响本次登录
-    elective.sso_login(iaaa.token)
+    resp = elective.sso_login(iaaa.token)
+    if isDualDegree:
+        sida = get_sida(resp)
+        sttp = identity
+        referer = resp.url
+        elective.sso_login_dual_degree(sida, sttp, referer)
     cout.info("Login success !")
 
 def task_get_available_courses(goals, plans, elected, ignored):
@@ -165,6 +173,22 @@ def main():
 
             ## 获取补退选页信息 ##
             cout.info("Get SupplyCancel page")
+            '''while True:
+                resp = elective.get_supplement() # 双学位第二页
+                tables = get_tables(resp._tree)
+                try:
+                    elected = get_courses(tables[1])
+                    plans = get_courses_with_detail(tables[0])
+                except IndexError as e: # 遇到空页面返回。
+                                        # 模拟方法：
+                                        # 1.先登录辅双，打开补退选第二页
+                                        # 2.再在同一浏览器登录主修
+                                        # 3.刷新辅双的补退选第二页可以看到
+                    cout.warning("IndexError encountered")
+                    elective.get_SupplyCancel() # 需要先请求一次补退选主页（惰性）
+                else:                           # 之后就可以不断刷新
+                    break'''
+
             resp = elective.get_SupplyCancel()
             tables = get_tables(resp._tree)
             elected = get_courses(tables[1])
@@ -192,23 +216,23 @@ def main():
                     except (RepeatedElectionError, ConflictingTimeError) as e:
                         ferr.error(e)
                         cout.warning("RepeatedElectionError encountered")
-                        ignored.append( (get_concise_course(course), "Repeated Election") )
+                        ignored.append( course.to_simplified(), "Repeatd Election" )
                     except ConflictingTimeError as e:
                         ferr.error(e)
                         cout.warning("ConflictingTimeError encountered")
-                        ignored.append( (get_concise_course(course), "Conflicting Time") )
+                        ignored.append( course.to_simplified(), "Confliting Time" )
                     except ElectivePermissionError as e:
                         ferr.error(e)
                         cout.warning("ElectivePermissionError encountered")
-                        ignored.append( (get_concise_course(course), "Elective Permission Required") )
+                        ignored.append( course.to_simplified(), "Electie Permission Required" )
                     except CreditLimitedError as e:
                         ferr.error(e)
                         cout.warning("CreditLimitedError encountered")
-                        ignored.append( (get_concise_course(course), "Credit Limited") )
+                        ignored.append( course.to_simplified(), "CreditLimited" )
                     except MutuallyExclusiveCourseError as e:
                         ferr.error(e)
                         cout.warning("MutuallyExclusiveCourseError encountered")
-                        ignored.append( (get_concise_course(course), "Mutex") )
+                        ignored.append( course.to_simplified(), "Mutex" )
                     except ElectionSuccess as e:
                         cout.info("%s is ELECTED !" % course) # 不从此处加入 ignored ，而是在下回合根据实际选课结果来决定是否忽略
                     except ElectionFailedError as e:
@@ -228,7 +252,7 @@ def main():
         except RequestException as e:
             ferr.error(e)
             cout.warning("RequestException encountered")
-        except (InvalidSessionError, InvalidTokenError) as e: # 基本不会发生
+        except (InvalidSessionError, InvalidTokenError, NoAuthInfoError, SharedSessionError) as e:
             cout.error(e)
             loginRequired = True
             cout.info("Need to login")

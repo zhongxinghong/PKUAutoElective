@@ -9,7 +9,7 @@ from .exceptions import StatusCodeError, ServerError, IAAANotSuccessError, Syste
     InvalidTokenError, InvalidSessionError, CaughtCheatingError, InvalidOperatingTimeError,\
     CourseIndexError, CaptchaError, TipsException, ConflictingTimeError, RepeatedElectionError,\
     OperationTimedOutError, ElectivePermissionError, ElectionSuccess, ElectionFailedError,\
-    CreditLimitedError, MutuallyExclusiveCourseError
+    CreditLimitedError, MutuallyExclusiveCourseError, NoAuthInfoError, SharedSessionError
 
 
 __all__ = [
@@ -81,6 +81,10 @@ def check_elective_title(r, **kwargs):
             raise CourseIndexError(response=r)
         elif err == "验证码不正确。":
             raise CaptchaError(response=r)
+        elif err == "无验证信息。":
+            raise NoAuthInfoError(response=r)
+        elif err == "你与他人共享了回话，请退出浏览器重新登录。":
+            raise SharedSessionError(response=r)
         elif __regex_errOperatingTime.search(err):
             raise InvalidOperatingTimeError(response=r, msg=err)
         else:

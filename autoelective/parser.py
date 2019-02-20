@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # filename: parser.py
 
+import re
 from lxml import etree
 from .course import Course
 from .config import generalCfg
@@ -26,6 +27,8 @@ __all__ = [
     "load_course_csv",
 
     ]
+
+__regex_bzfxSida = re.compile(r'\?sida=(\S+?)&sttp=(?:bzx|bfx)')
 
 def get_tree_from_response(r):
     return etree.HTML(r.text) # 不要用 r.content, 否则可能会以 latin-1 编码
@@ -64,6 +67,9 @@ def get_tips(tree):
     else:
         td = tips[0].xpath('.//table//table//td')[1]
         return "".join(td.xpath('.//text()')).strip()
+
+def get_sida(r):
+    return __regex_bzfxSida.search(r.text).group(1)
 
 def get_courses(table, fieldnames=["课程名","班号","开课单位"]):
     header = get_table_header(table)

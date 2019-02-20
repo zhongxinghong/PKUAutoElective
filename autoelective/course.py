@@ -23,6 +23,9 @@ class Course(ImmutableAttrsMixin):
         limit, current = self.status
         return (limit > current)
 
+    def to_simplified(self):
+        return Course(self.name, self.classNo, self.school)
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False

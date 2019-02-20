@@ -47,6 +47,23 @@ class ElectiveClient(ClientMixin, metaclass=Singleton):
         self._save_cookies()
         return resp
 
+    def sso_login_dual_degree(self, sida, sttp, referer, **kwargs):
+        assert len(sida) == 32
+        assert sttp in ("bzx", "bfx")
+        headers = kwargs.pop("headers", {})
+        headers["Referer"] = referer # 为之前登录的链接
+        resp = self._get(ElectiveLinks.SSOLoginDualDegree,
+            params = {
+                "sida": sida,
+                "sttp": sttp,
+            },
+            headers = headers,
+            hooks = self.__hooks_check_title,
+            **kwargs
+            )
+        self._save_cookies()
+        return resp
+
     def logout(self, **kwargs):
         headers = self.__get_headers_with_referer(kwargs)
         resp = self._get(ElectiveLinks.Logout,
@@ -101,7 +118,7 @@ class ElectiveClient(ClientMixin, metaclass=Singleton):
 
     def get_SupplyCancel(self, **kwargs):
         """ 补退选 """
-        headers = self.__get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel) # 此 Referer 相当于刷新页面
+        headers = self.__get_headers_with_referer(kwargs)
         resp = self._get(ElectiveLinks.SupplyCancel,
             headers = headers,
             hooks = self.__hooks_check_title,
@@ -109,6 +126,17 @@ class ElectiveClient(ClientMixin, metaclass=Singleton):
             )
         self._save_cookies()
         return resp
+
+    '''def get_supplement(self, **kwargs): # 辅双第二页，通过输入数字 2 进行跳转
+        url = "http://elective.pku.edu.cn/elective2008/edu/pku/stu/elective/controller/supplement/supplement.jsp?netui_row=electableListGrid%3B50&netui_row=electResultLisGrid%3B0&conflictCourse="
+        headers = self.__get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel)
+        resp = self._get(url,
+            headers = headers,
+            hooks = self.__hooks_check_title,
+            **kwargs
+            )
+        self._save_cookies()
+        return resp'''
 
     def get_SupplyOnly(self, **kwargs):
         """ 补选 """

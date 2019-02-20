@@ -30,17 +30,17 @@ __base_dir = os.path.dirname(__file__)
 __absP = lambda path: os.path.abspath(os.path.join(__base_dir, path))
 
 
-Base_Dir                     = __absP("./")
-Model_Dir                    = __absP("./captcha/model/")
-Cache_Dir                    = __absP("../cache/")
-Log_Dir                      = __absP("../log/")
-Captcha_Cache_Dir            = __absP("../cache/captcha/")
+Base_Dir          = __absP("./")
+Model_Dir         = __absP("./captcha/model/")
+Cache_Dir         = __absP("../cache/")
+Log_Dir           = __absP("../log/")
+Captcha_Cache_Dir = __absP("../cache/captcha/")
 
-Course_UTF8_CSV              = __absP("../course.utf-8.csv")
-Course_GBK_CSV               = __absP("../course.gbk.csv")
-Config_INI                   = __absP("../config.ini")
+Course_UTF8_CSV   = __absP("../course.utf-8.csv")
+Course_GBK_CSV    = __absP("../course.gbk.csv")
+Config_INI        = __absP("../config.ini")
 
-# 警惕直接复制的 User-Agent 中可能存在的省略号，它可能会引发如下错误：
+# 警惕直接复制的 User-Agent 中可能存在的省略号（通常源自 Firefox 开发者工具），它可能会引发如下错误：
 #   File "/usr/lib/python3.6/http/client.py", line 1212, in putheader
 #     values[i] = one_value.encode('latin-1')
 # UnicodeEncodeError: 'latin-1' codec can't encode character '\u2026' in position 30: ordinal not in range(256)
@@ -87,6 +87,7 @@ class ElectiveLinks(object, metaclass=NoInstance):
         Host
         SOOLoginRedirect        重定向链接
         SSOLogin                sso登录
+        SSOLoginDualDegree      sso登录（双学位）
         Logout                  登出
         HelpController          选课帮助页
         ElectivePlanController  选课计划页
@@ -105,6 +106,7 @@ class ElectiveLinks(object, metaclass=NoInstance):
     Host                   = "elective.pku.edu.cn"
     SOOLoginRedirect       = "http://elective.pku.edu.cn:80/elective2008/agent4Iaaa.jsp/../ssoLogin.do"
     SSOLogin               = __Base_URL + "/ssoLogin.do"
+    SSOLoginDualDegree     = "http://elective.pku.edu.cn:80/elective2008/scnStAthVef.jsp/../ssoLogin.do"
     Logout                 = __Base_URL + "/logout.do"
     HelpController         = __Controller_Base_URL + "/help/HelpController.jpf"
     ElectivePlanController = __Controller_Base_URL + "/electivePlan/ElectivePlanController.jpf"
@@ -118,3 +120,4 @@ class ElectiveLinks(object, metaclass=NoInstance):
     #DeleElecPlanCurriclum  = __Controller_Base_URL + "/electivePlan/deleElecPlanCurriclum.do"
     DrawServlet            = __Base_URL + "/DrawServlet"
     Validate               = __Controller_Base_URL + "/supplement/validate.do"
+
