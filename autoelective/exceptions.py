@@ -53,6 +53,7 @@ __all__ = [
                 "ElectionFailedError",
                 "CreditLimitedError",
                 "MutuallyExclusiveCourseError",
+                "MultiEnglishCourseError",
 
 ]
 
@@ -220,3 +221,7 @@ class CreditLimitedError(TipsException):
 class MutuallyExclusiveCourseError(TipsException):
     code = 328
     desc = "只能选其一门。"
+
+class MultiEnglishCourseError(TipsException):
+    code = 329
+    desc = "学校规定每学期只能修一门英语课，因此您不能选择该课。"

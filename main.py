@@ -216,23 +216,23 @@ def main():
                     except (RepeatedElectionError, ConflictingTimeError) as e:
                         ferr.error(e)
                         cout.warning("RepeatedElectionError encountered")
-                        ignored.append( course.to_simplified(), "Repeatd Election" )
+                        ignored.append( (course.to_simplified(), "Repeatd Election") )
                     except ConflictingTimeError as e:
                         ferr.error(e)
                         cout.warning("ConflictingTimeError encountered")
-                        ignored.append( course.to_simplified(), "Confliting Time" )
+                        ignored.append( (course.to_simplified(), "Confliting Time") )
                     except ElectivePermissionError as e:
                         ferr.error(e)
                         cout.warning("ElectivePermissionError encountered")
-                        ignored.append( course.to_simplified(), "Electie Permission Required" )
+                        ignored.append( (course.to_simplified(), "Electie Permission Required") )
                     except CreditLimitedError as e:
                         ferr.error(e)
                         cout.warning("CreditLimitedError encountered")
-                        ignored.append( course.to_simplified(), "CreditLimited" )
+                        ignored.append( (course.to_simplified(), "CreditLimited") )
                     except MutuallyExclusiveCourseError as e:
                         ferr.error(e)
                         cout.warning("MutuallyExclusiveCourseError encountered")
-                        ignored.append( course.to_simplified(), "Mutex" )
+                        ignored.append( (course.to_simplified(), "Mutex") )
                     except ElectionSuccess as e:
                         cout.info("%s is ELECTED !" % course) # 不从此处加入 ignored ，而是在下回合根据实际选课结果来决定是否忽略
                     except ElectionFailedError as e:

@@ -9,7 +9,8 @@ from .exceptions import StatusCodeError, ServerError, IAAANotSuccessError, Syste
     InvalidTokenError, InvalidSessionError, CaughtCheatingError, InvalidOperatingTimeError,\
     CourseIndexError, CaptchaError, TipsException, ConflictingTimeError, RepeatedElectionError,\
     OperationTimedOutError, ElectivePermissionError, ElectionSuccess, ElectionFailedError,\
-    CreditLimitedError, MutuallyExclusiveCourseError, NoAuthInfoError, SharedSessionError
+    CreditLimitedError, MutuallyExclusiveCourseError, NoAuthInfoError, SharedSessionError,\
+    MultiEnglishCourseError
 
 
 __all__ = [
@@ -103,6 +104,8 @@ def check_elective_tips(r, **kwargs):
         raise ElectionFailedError(response=r)
     elif tips == "您本学期所选课程的总学分已经超过规定学分上限。":
         raise CreditLimitedError(response=r)
+    elif tips == "学校规定每学期只能修一门英语课，因此您不能选择该课。":
+        raise MultiEnglishCourseError(response=r)
     elif tips.startswith("上课时间冲突："):
         raise ConflictingTimeError(response=r, msg=tips)
     elif tips.startswith("该课程在补退选阶段开始后的约一周开放选课"): # 这个可能需要根据当学期情况进行修改
