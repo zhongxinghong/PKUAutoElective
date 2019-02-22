@@ -85,7 +85,7 @@ class IAAALinks(object, metaclass=NoInstance):
 class ElectiveLinks(object, metaclass=NoInstance):
     """
         Host
-        SOOLoginRedirect        重定向链接
+        SSOLoginRedirect        重定向链接
         SSOLogin                sso登录
         SSOLoginDualDegree      sso登录（双学位）
         Logout                  登出
@@ -104,7 +104,7 @@ class ElectiveLinks(object, metaclass=NoInstance):
     __Controller_Base_URL  = __Base_URL + "/edu/pku/stu/elective/controller"
 
     Host                   = "elective.pku.edu.cn"
-    SOOLoginRedirect       = "http://elective.pku.edu.cn:80/elective2008/agent4Iaaa.jsp/../ssoLogin.do"
+    SSOLoginRedirect       = "http://elective.pku.edu.cn:80/elective2008/agent4Iaaa.jsp/../ssoLogin.do"
     SSOLogin               = __Base_URL + "/ssoLogin.do"
     SSOLoginDualDegree     = "http://elective.pku.edu.cn:80/elective2008/scnStAthVef.jsp/../ssoLogin.do"
     Logout                 = __Base_URL + "/logout.do"

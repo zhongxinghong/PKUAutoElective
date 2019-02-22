@@ -43,7 +43,7 @@ class IAAAClient(ClientMixin, metaclass=Singleton):
         headers["Referer"] = IAAALinks.OauthHomePage + \
                             "?appID=syllabus" + \
                             "&appName=%E5%AD%A6%E7%94%9F%E9%80%89%E8%AF%BE%E7%B3%BB%E7%BB%9F" + \
-                            "&redirectUrl=%s" % ElectiveLinks.SOOLoginRedirect
+                            "&redirectUrl=%s" % ElectiveLinks.SSOLoginRedirect
         resp = self._post(IAAALinks.OauthLogin,
             data = {
                 "appid": "syllabus",
@@ -52,7 +52,7 @@ class IAAAClient(ClientMixin, metaclass=Singleton):
                 "randCode": "",
                 "smsCode": "",
                 "otpCode": "",
-                "redirUrl": ElectiveLinks.SOOLoginRedirect,
+                "redirUrl": ElectiveLinks.SSOLoginRedirect,
             },
             headers = headers,
             hooks = self.__hooks_check_iaaa_success,
