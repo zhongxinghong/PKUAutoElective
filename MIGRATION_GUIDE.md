@@ -1,6 +1,10 @@
 Migration Guide
 ====================
 
+v2.0.1 -> v2.0.2
+------------------
+- `config.ini` 内添加了 `client/supply_cancel_page` 值，以支持不处于选课计划第一页的课程
+
 v1.0.4 -> v2.0.1
 ------------------
 - 新版对 `config.ini` 内的绝大多数配置项名称做了修改，需要用新提供 `config.sample.ini` 重新填写一遍配置

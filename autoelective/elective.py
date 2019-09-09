@@ -156,16 +156,21 @@ class ElectiveClient(BaseClient, metaclass=Singleton):
         )
         return r
 
-    # def get_supplement(self, **kwargs): # 辅双第二页，通过输入数字 2 进行跳转
-    #     url = "http://elective.pku.edu.cn/elective2008/edu/pku/stu/elective/controller/supplement/supplement.jsp?netui_row=electableListGrid%3B50&netui_row=electResultLisGrid%3B0&conflictCourse="
-    #     headers = _get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel)
-    #     r = self._get(
-    #         url=url,
-    #         headers=headers,
-    #         hooks=_hooks_check_title,
-    #         **kwargs,
-    #     )
-    #     return r
+    def get_supplement(self, page=1, **kwargs): # 辅双第二页，通过输入数字 2 进行跳转
+        assert page > 0
+        headers = _get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel)
+        r = self._get(
+            url=ElectiveLinks.Supplement + "?netui_row=electResultLisGrid%3B0",
+            params={
+                # "netui_row": "electResultLisGrid;0", # leave this field in url for duplicate key 'netui_row'
+                "netui_row": "electableListGrid;%s" % ( (page - 1) * 50 ),
+                "conflictCourse": "",
+            },
+            headers=headers,
+            hooks=_hooks_check_title,
+            **kwargs,
+        )
+        return r
 
     def get_SupplyOnly(self, **kwargs):
         """ 补选 """

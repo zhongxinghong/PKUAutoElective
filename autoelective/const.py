@@ -117,6 +117,7 @@ class ElectiveLinks(object):
     ElectiveWorkController = _CONTROLLER_BASE_URL + "/electiveWork/ElectiveWorkController.jpf"
     ShowResults            = _CONTROLLER_BASE_URL + "/electiveWork/showResults.do"
     SupplyCancel           = _CONTROLLER_BASE_URL + "/supplement/SupplyCancel.do"
+    Supplement             = _CONTROLLER_BASE_URL + "/supplement/supplement.jsp"
     SupplyOnly             = _CONTROLLER_BASE_URL + "/supplement/SupplyOnly.do"
     # CourseQueryController  = _CONTROLLER_BASE_URL + "/courseQuery/CourseQueryController.jpf"
     # GetCurriculmByForm     = _CONTROLLER_BASE_URL + "/courseQuery/getCurriculmByForm.do"
@@ -124,4 +125,3 @@ class ElectiveLinks(object):
     # DeleElecPlanCurriclum  = _CONTROLLER_BASE_URL + "/electivePlan/deleElecPlanCurriclum.do"
     DrawServlet            = _BASE_URL + "/DrawServlet"
     Validate               = _CONTROLLER_BASE_URL + "/supplement/validate.do"
-

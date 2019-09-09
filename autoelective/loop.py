@@ -34,8 +34,10 @@ interval = config.refreshInterval
 deviation = config.refreshRandomDeviation
 isDualDegree = config.isDualDegree
 identity = config.identity
+page = config.supplyCancelPage
 
 config.check_identify(identity)
+config.check_supply_cancel_page(page)
 
 
 def _get_refresh_interval():
@@ -209,27 +211,48 @@ def main(goals=None, ignored=None, status=None):
 
             # MARK: check supply/cancel page
 
-            cout.info("Get SupplyCancel page")
-            '''while True:
-                resp = elective.get_supplement() # 双学位第二页
-                tables = get_tables(resp._tree)
-                try:
-                    elected = get_courses(tables[1])
-                    plans = get_courses_with_detail(tables[0])
-                except IndexError as e: # 遇到空页面返回。
-                                        # 模拟方法：
-                                        # 1.先登录辅双，打开补退选第二页
-                                        # 2.再在同一浏览器登录主修
-                                        # 3.刷新辅双的补退选第二页可以看到
-                    cout.warning("IndexError encountered")
-                    elective.get_SupplyCancel() # 需要先请求一次补退选主页（惰性）
-                else:                           # 之后就可以不断刷新
-                    break'''
+            if page == 1:
 
-            resp = elective.get_SupplyCancel()
-            tables = get_tables(resp._tree)
-            elected = get_courses(tables[1])
-            plans = get_courses_with_detail(tables[0])
+                cout.info("Get SupplyCancel page %s" % page)
+
+                resp = elective.get_SupplyCancel()
+                tables = get_tables(resp._tree)
+                elected = get_courses(tables[1])
+                plans = get_courses_with_detail(tables[0])
+
+            else:
+                #
+                # 刷新非第一页的课程，第一次请求会遇到返回空页面的情况
+                #
+                # 模拟方法：
+                # 1.先登录辅双，打开补退选第二页
+                # 2.再在同一浏览器登录主修
+                # 3.刷新辅双的补退选第二页可以看到
+                #
+                # -----------------------------------------------
+                #
+                # 引入 retry 逻辑以防止以为某些特殊原因无限重试
+                # 正常情况下一次就能成功，但是为了应对某些偶发错误，这里设为最多尝试 3 次
+                #
+                retry = 3
+                while True:
+                    if retry == 0:
+                        raise OperationFailedError("unable to get normal Supplement page %s" % page)
+
+                    cout.info("Get Supplement page %s" % page)
+                    resp = elective.get_supplement(page=page) # 双学位第二页
+                    tables = get_tables(resp._tree)
+                    try:
+                        elected = get_courses(tables[1])
+                        plans = get_courses_with_detail(tables[0])
+                    except IndexError as e:
+                        cout.warning("IndexError encountered")
+                        cout.info("Get SupplyCancel first to prevent empty table returned")
+                        _ = elective.get_SupplyCancel() # 遇到空页面时请求一次补退选主页，之后就可以不断刷新
+                    else:
+                        break
+                    finally:
+                        retry -= 1
 
 
             # MARK: check available courses

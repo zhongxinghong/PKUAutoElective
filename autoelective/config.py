@@ -78,6 +78,10 @@ class AutoElectiveConfig(BaseConfig):
     # [client]
 
     @property
+    def supplyCancelPage(self):
+        return self.getint("client", "supply_cancel_page")
+
+    @property
     def refreshInterval(self):
         return self.getfloat("client", "refresh_interval")
 
@@ -126,6 +130,10 @@ class AutoElectiveConfig(BaseConfig):
         limited = self.__class__.ALLOWED_IDENTIFY
         if identity not in limited:
             raise ValueError("unsupported identity %s for elective, identity must be in %s" % (identity, limited))
+
+    def check_supply_cancel_page(self, page):
+        if page <= 0:
+            raise ValueError("supply_cancel_page must be positive number, not %s" % page)
 
     def get_user_subpath(self):
         if self.isDualDegree:
