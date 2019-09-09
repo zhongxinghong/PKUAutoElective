@@ -181,14 +181,14 @@ GET  /rules      输出这个路由列表
 $ tree autoelective/
 autoelective/
 ├── captcha                                   验证码相关
-│   ├── classifier.py                         模型导入与分类器类
-│   ├── feature.py                            与特征向量提取相关的函数
-│   ├── __init__.py                           验证码识别结果的模型和验证码识别类
-│   ├── model                                 可用模型
-│   │   ├── KNN.model.f5.l1.c1.bz2
-│   │   ├── RandomForest.model.f2.c6.bz2
-│   │   └── SVM.model.f3.l1.c9.xz
-│   └── processor.py                          验证码图像处理相关的函数
+│   ├── classifier.py                         模型导入与分类器类
+│   ├── feature.py                            与特征向量提取相关的函数
+│   ├── __init__.py                           验证码识别结果的模型和验证码识别类
+│   ├── model                                 可用模型
+│   │   ├── KNN.model.f5.l1.c1.bz2
+│   │   ├── RandomForest.model.f2.c6.bz2
+│   │   └── SVM.model.f3.l1.c9.xz
+│   └── processor.py                          验证码图像处理相关的函数
 ├── client.py                                 客户端的基类
 ├── config.py                                 ini 配置文件的解析类及配置的模型声明
 ├── const.py                                  文件夹路径、URL 等常数
