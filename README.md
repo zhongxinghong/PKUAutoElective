@@ -124,108 +124,7 @@ config.alice.ini  course.utf-8.alice.csv  config.bob.ini  course.gbk.bob.csv  ma
 ```console
 $ python3 main.py --config ./config.alice.ini --course-csv-utf8 ./course.utf-8.alice.csv
 $ python3 main.py --config ./config.bob.ini --course-csv-gbk ./course.gbk.bob.csv
-
-```# PKUAutoElective
-
-北大选课网 **补退选** 阶段自动选课小工具 v2.0.1 (2019.09.09)
-
-目前支持 `本科生（含辅双）` 和 `研究生` 选课，其中本科生辅双身份选课仅支持第 1 页的课程
-
-
-## 特点
-
-- 运行过程中不需要进行任何人为操作，且支持同时通过其他设备、IP 访问选课网
-- 利用机器学习模型自动识别验证码，具体参见我的项目 [PKUElectiveCaptcha](https://github.com/zhongxinghong/PKUElectiveCaptcha) ，识别率测试值为 **95.6%**
-- 具有较为完善的错误捕获机制，不容易在运行中意外退出
-- 可以选择性开启额外的监视器进程，之后可以通过端口监听当前的选课状况
-- 支持多进程下的多账号/多身份选课
-
-
-## 安装
-
-该项目至少需要 Python 3 （项目开发环境为 Python 3.6.6），可以从 [Python 官网](https://www.python.org/) 下载并安装
-```console
-$ apt-get install python3
 ```
-
-下载这个 repo 至本地
-```console
-$ git clone https://github.com/zhongxinghong/PKUAutoElective.git
-```
-
-安装依赖包
-```console
-$ pip3 install requests lxml Pillow numpy sklearn flask
-```
-
-可以改用清华 pip 源，加快下载速度
-```console
-$ pip3 install requests lxml Pillow numpy sklearn flask -i https://pypi.tuna.tsinghua.edu.cn/simple
-```
-
-可选依赖包
-```console
-$ pip3 install simplejson
-```
-
-## 基本用法
-
-1. 复制 `config.sample.ini` 文件，并将所复制得的文件重命名为 `config.ini`
-2. 根据系统类型选择合适的 `course.csv` ，同理复制 `course.*.sample.csv` 并将所得文件重命名为 `course.*.csv` ，即 `course.utf-8.csv/course.gbk.csv` ，以确保 csv 表格用软件打开后不会乱码
-    - **Linux** 若使用 `utf-8` 编码，可以用 LibreOffice 以 `UTF-8` 编码打开，若使用 `gbk` 编码，可以用 LibreOffice 以 `GB-18030` 编码打开
-    - **Windows** 使用 `gbk` 编码，可以用 MS Excel 打开
-    - **MacOS** 若使用 `gbk` 编码，可以用 MS Excel 打开，若使用 `utf-8` 编码，可以用 numbers 打开
-3. 将待选课程手动添加到选课网的 “选课计划” 中，并确保所选课程处在 **补退选页** 中 “选课计划” 列表的 **第 1 页** 。
-    - 注：为了保证刷新速度，减小服务器压力，该项目不解析位于选课计划第 1 页之后的课程
-    - 注：该项目不会事前校验待选课程的合理性，只会根据选课提交结果来判断是否提交成功，所以请自行 **确保填写的课程在有名额的时候可以被选上** ，以免浪费时间。部分常见错误可参看 [异常处理](#异常处理) 小节
-4. 将待选课程的 `课程名`, `班号`, `开课单位` 对应复制到 `course.csv` 中（本项目根据这三个字段唯一确定一个课程），每个课程占一行，高优先级的课程在上（即如果当前循环回合同时发现多个课程可选，则按照从上往下的优先级顺序依次提交选课请求）
-    - 注：考虑到 csv 格式不区分数字和字符串，该项目允许将课号 `01` 以数字 `1` 的形式直接录入
-    - 注：请确保每一行的所有字段都被填写，**信息填写不完整的行会被自动忽略，并且不会抛出异常**
-5. 配置 `config.ini`
-    - 修改 `coding/csv_coding` 项，使之与所用 `course.*.csv` 的编码匹配
-    - 填写 IAAA 认证所用的学号和密码
-    - 如果是双学位账号，则设置 `dual_degree` 项为 `true` ，同时设置双学位登录身份 `identity` ，只能填 `bzx`, `bfx` ，分别代表 `主修` 和 `辅双` ；对于非双学位账号，则设置 `dual_degree` 为 `false` ，此时登录身份项没有意义
-    - 如有需要，可以修改刷新间隔，但 **不要将刷新间隔改得过短！**
-6. 进入项目根目录，利用 `python3 main.py` 命令运行主程序，即可开始自动选课。
-
-
-## 测试方法
-
-如有需要，可以进行下面的部分测试，确保程序可以在 `你的补退选页` 中正常运行：
-
-- 可以通过向课程列表中添加如下几种课程，测试程序的反应：
-
-    - 正常的可以直接补选上的课程
-    - 已经选满的课程
-    - 上课时间/考试时间冲突的课程
-    - 相同课号的课程（其他院的相同课或同一门课的不同班）
-    - 性质互斥的课程（例如：线代与高代）
-    - 跨院系选课阶段开放的其他院专业课
-
-- 可以尝试一下超学分选课会出现什么情况
-
-#### 注意：
-
-- 之后手动退选的时候不要点错课噢 QvQ
-- 研究生不能修改选课计划，请慎重测试，不要随便添加其他课程，以免造成不必要的麻烦！
-
-
-## 高级用法
-
-自 `v2.0.0` 起，可以在程序运行时指定命令行选项。通过 `python3 main.py --help` 查看帮助。
-```console
-$ python3 main.py --help
-
-Usage: main.py [options]
-
-PKU Auto-Elective Tool v2.0.1 (2019.09.09)
-
-Options:
-  --version             show program's version number and exit
-  -h, --help            show this help message and exit
-  --config=FILE         custom config file encoded with utf8
-  --course-csv-utf8=FILE
-
 
 ### 开启监视器
 
@@ -251,7 +150,6 @@ server {
         proxy_pass  http://127.0.0.1:7074;
     }
 }
-
 ```
 
 在这个示例中，通过访问 `http://10.123.124.125:12345` 可以查看运行状态
