@@ -1,6 +1,6 @@
 # PKUAutoElective
 
-北大选课网 **补退选** 阶段自动选课小工具 v2.0.2 (2019.09.09)
+北大选课网 **补退选** 阶段自动选课小工具 v2.0.3 (2019.09.09)
 
 目前支持 `本科生（含辅双）` 和 `研究生` 选课
 
@@ -17,11 +17,15 @@
 ## 安装
 
 该项目至少需要 Python 3 （项目开发环境为 Python 3.6.6），可以从 [Python 官网](https://www.python.org/) 下载并安装
+
+例如在 Debian-Linux 下运行：
 ```console
 $ apt-get install python3
 ```
 
-下载这个 repo 至本地
+下载这个 repo 至本地。点击右上角的 `Clone or download` 即可下载
+
+对于 git 命令行：
 ```console
 $ git clone https://github.com/zhongxinghong/PKUAutoElective.git
 ```
@@ -57,7 +61,7 @@ $ pip3 install simplejson
 5. 配置 `config.ini`
     - 修改 `coding/csv_coding` 项，使之与所用 `course.*.csv` 的编码匹配
     - 填写 IAAA 认证所用的学号和密码
-    - 如果是双学位账号，则设置 `dual_degree` 项为 `true` ，同时设置双学位登录身份 `identity` ，只能填 `bzx`, `bfx` ，分别代表 `主修` 和 `辅双` ；对于非双学位账号，则设置 `dual_degree` 为 `false` ，此时登录身份项没有意义
+    - 如果是双学位账号，则设置 `dual_degree` 项为 `true` ，同时设置双学位登录身份 `identity` ，只能填 `bzx`, `bfx` ，分别代表 `主修` 和 `辅双` ；对于非双学位账号，则设置 `dual_degree` 为 `false` ，此时登录身份项没有意义。注：以 **双学位账号的主学位身份** 进行选课仍然需要将 `dual_degree` 设为 `true` ，否则可能会遇到一直显示会话过期/尚未登录的情况。
     - 如果待选的课程不在选课计划的第一页，并且无法将第一页的其他课程删除，你可以通过修改 `supply_cancel_page` 来指定实际刷新第几页。注：该项目一个进程只能刷新一页的选课计划，如果你需要选的课处于选课计划的不同页，则需要为每个页面分别开一个进程，详见 [高级用法](#高级用法) 中的 [多账号设置](#多账号设置) 小节
     - 如有需要，可以修改刷新间隔，但 **不要将刷新间隔改得过短！**
 6. 进入项目根目录，利用 `python3 main.py` 命令运行主程序，即可开始自动选课。
@@ -92,7 +96,7 @@ $ python3 main.py --help
 
 Usage: main.py [options]
 
-PKU Auto-Elective Tool v2.0.2 (2019.09.09)
+PKU Auto-Elective Tool v2.0.1 (2019.09.09)
 
 Options:
   --version             show program's version number and exit
@@ -124,6 +128,7 @@ config.alice.ini  course.utf-8.alice.csv  config.bob.ini  course.gbk.bob.csv  ma
 ```console
 $ python3 main.py --config ./config.alice.ini --course-csv-utf8 ./course.utf-8.alice.csv
 $ python3 main.py --config ./config.bob.ini --course-csv-gbk ./course.gbk.bob.csv
+
 ```
 
 ### 开启监视器
@@ -150,6 +155,7 @@ server {
         proxy_pass  http://127.0.0.1:7074;
     }
 }
+
 ```
 
 在这个示例中，通过访问 `http://10.123.124.125:12345` 可以查看运行状态
@@ -175,14 +181,14 @@ GET  /rules      输出这个路由列表
 $ tree autoelective/
 autoelective/
 ├── captcha                                   验证码相关
-│   ├── classifier.py                         模型导入与分类器类
-│   ├── feature.py                            与特征向量提取相关的函数
-│   ├── __init__.py                           验证码识别结果的模型和验证码识别类
-│   ├── model                                 可用模型
-│   │   ├── KNN.model.f5.l1.c1.bz2
-│   │   ├── RandomForest.model.f2.c6.bz2
-│   │   └── SVM.model.f3.l1.c9.xz
-│   └── processor.py                          验证码图像处理相关的函数
+│   ├── classifier.py                         模型导入与分类器类
+│   ├── feature.py                            与特征向量提取相关的函数
+│   ├── __init__.py                           验证码识别结果的模型和验证码识别类
+│   ├── model                                 可用模型
+│   │   ├── KNN.model.f5.l1.c1.bz2
+│   │   ├── RandomForest.model.f2.c6.bz2
+│   │   └── SVM.model.f3.l1.c9.xz
+│   └── processor.py                          验证码图像处理相关的函数
 ├── client.py                                 客户端的基类
 ├── config.py                                 ini 配置文件的解析类及配置的模型声明
 ├── const.py                                  文件夹路径、URL 等常数
