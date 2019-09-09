@@ -5,6 +5,18 @@ v1.0.4 -> v2.0.1
 ------------------
 - 新版对 `config.ini` 内的绝大多数配置项名称做了修改，需要用新提供 `config.sample.ini` 重新填写一遍配置
 - 添加了自定义 `config.ini` 和 `course.csv`
+- 添加了对 `Flask` 库的依赖，对于尚未安装该依赖的环境，还需额外运行 `pip3 install flask`
+
+#### For 'git pull' Comment
+
+如果你使用了 `git` 命令更新该项目，在输入 `git pull origin master` 后，可能会报错 `error: Your local changes to the following files would be overwritten by merge:` ，这是因为新版删除了 `config.ini` 和 `course.*.csv` 文件，而改用 `config.sample.ini` 和 `course.*.sample.csv` 代替。只需要输入以下命令即可消除冲突：
+
+在项目根目录下：
+```console
+$ git checkout config.ini
+$ git checkout course.utf-8.csv
+$ git checkout course.gbk.csv
+```
 
 #### Development Related
 

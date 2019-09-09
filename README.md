@@ -11,7 +11,7 @@
 - 利用机器学习模型自动识别验证码，具体参见我的项目 [PKUElectiveCaptcha](https://github.com/zhongxinghong/PKUElectiveCaptcha) ，识别率测试值为 **95.6%**
 - 具有较为完善的错误捕获机制，不容易在运行中意外退出
 - 可以选择性开启额外的监视器进程，之后可以通过端口监听当前的选课状况
-- 支持多进程下的多账号选课
+- 支持多进程下的多账号/多身份选课
 
 
 ## 安装
@@ -290,7 +290,7 @@ autoelective/
 见 [Realease History](/HISTORY.md)
 
 
-## 版本迁移
+## 版本迁移指南
 
 见 [Migration Guide](/MIGRATION_GUIDE.md)
 
