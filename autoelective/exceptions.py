@@ -75,9 +75,21 @@ class StatusCodeError(AutoElectiveClientException):
     code = 101
     desc = "response.status_code != 200"
 
+    def __init__(self, *args, **kwargs):
+        r = kwargs.get("response")
+        if r is not None and "msg" not in kwargs:
+            kwargs["msg"] = "%s. response status code: %s" % (self.__class__.code, r.status_code)
+        super().__init__(*args, **kwargs)
+
 class ServerError(AutoElectiveClientException):
     code = 102
     desc = r"response.status_code in (500, 501, 502, 503)"
+
+    def __init__(self, *args, **kwargs):
+        r = kwargs.get("response")
+        if r is not None and "msg" not in kwargs:
+            kwargs["msg"] = "%s. response status_code: %s" % (self.__class__.code, r.status_code)
+        super().__init__(*args, **kwargs)
 
 class OperationFailedError(AutoElectiveException):
     code = 103
@@ -91,6 +103,12 @@ class IAAAException(AutoElectiveClientException):
 class IAAANotSuccessError(IAAAException):
     code = 201
     desc = "response.json()['success'] == False"
+
+    def __init__(self, *args, **kwargs):
+        r = kwargs.get("response")
+        if r is not None and "msg" not in kwargs:
+            kwargs["msg"] = "%s. response JSON: %s" % (self.__class__.code, r.json())
+        super().__init__(*args, **kwargs)
 
 
 class ElectiveException(AutoElectiveClientException):

@@ -329,9 +329,17 @@ def main(goals=None, ignored=None, status=None):
             ferr.error(e)
             cout.warning("ServerError/StatusCodeError encountered")
 
+        except OperationFailedError as e:
+            ferr.error(e)
+            cout.warning("OperationFailedError encountered")
+
         except RequestException as e:
             ferr.error(e)
             cout.warning("RequestException encountered")
+
+        except IAAAException as e:
+            ferr.error(e)
+            cout.warning("IAAAException encountered")
 
         except (SessionExpiredError, InvalidTokenError, NoAuthInfoError, SharedSessionError) as e:
             cout.error(e)
@@ -356,10 +364,6 @@ def main(goals=None, ignored=None, status=None):
         except OperationTimeoutError as e:
             ferr.error(e)
             cout.warning("OperationTimeoutError encountered")
-
-        except OperationFailedError as e:
-            ferr.error(e)
-            cout.warning("OperationFailedError encountered")
 
         except json.JSONDecodeError as e:
             ferr.error(e)
