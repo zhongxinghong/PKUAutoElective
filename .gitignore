@@ -1,3 +1,10 @@
 __pycache__/
 /test
+/log
+/cache
+/config
 *.bac
+
+config.ini
+course.gbk.csv
+course.utf-8.csv

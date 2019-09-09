@@ -1,14 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: parser.py
-
-import re
-from lxml import etree
-from .course import Course
-from .config import generalCfg
-from .util import read_csv
-from .const import Course_UTF8_CSV, Course_GBK_CSV
-from .exceptions import UnsupportedCodingError
+# modified: 2019-09-09
 
 __all__ = [
 
@@ -28,7 +21,17 @@ __all__ = [
 
     ]
 
-__regex_bzfxSida = re.compile(r'\?sida=(\S+?)&sttp=(?:bzx|bfx)')
+import re
+from lxml import etree
+from .course import Course
+from .config import AutoElectiveConfig
+from .utils import read_csv
+from .const import COURSE_UTF8_CSV, COURSE_GBK_CSV
+
+
+_config = AutoElectiveConfig()
+_regexBzfxSida = re.compile(r'\?sida=(\S+?)&sttp=(?:bzx|bfx)')
+
 
 def get_tree_from_response(r):
     return etree.HTML(r.text) # 不要用 r.content, 否则可能会以 latin-1 编码
@@ -69,12 +72,12 @@ def get_tips(tree):
         return "".join(td.xpath('.//text()')).strip()
 
 def get_sida(r):
-    return __regex_bzfxSida.search(r.text).group(1)
+    return _regexBzfxSida.search(r.text).group(1)
 
-def get_courses(table, fieldnames=["课程名","班号","开课单位"]):
+def get_courses(table):
     header = get_table_header(table)
     trs = get_table_trs(table)
-    idxs = tuple(map(header.index, fieldnames))
+    idxs = tuple(map(header.index, ["课程名","班号","开课单位"]))
     cs = []
     for tr in trs:
         t = tr.xpath('./th | ./td')
@@ -83,10 +86,10 @@ def get_courses(table, fieldnames=["课程名","班号","开课单位"]):
         cs.append(c)
     return cs
 
-def get_courses_with_detail(table, fieldnames=["课程名","班号","开课单位","限数/已选","补选"]):
+def get_courses_with_detail(table):
     header = get_table_header(table)
     trs = get_table_trs(table)
-    idxs = tuple(map(header.index, fieldnames)) # 到时候要改
+    idxs = tuple(map(header.index, ["课程名","班号","开课单位","限数/已选","补选"]))
     cs = []
     for tr in trs:
         t = tr.xpath('./th | ./td')
@@ -97,24 +100,23 @@ def get_courses_with_detail(table, fieldnames=["课程名","班号","开课单�
         cs.append(c)
     return cs
 
-def load_course_csv():
-    coding = generalCfg.get("coding", "CSV_Coding")
-    _coding = coding.lower()
-    if _coding == "utf-8":
-        file = Course_UTF8_CSV
-        encoding = "utf-8-sig"
-    elif _coding == "gbk":
-        file = Course_GBK_CSV
-        encoding = "gbk"
-    else:
-        raise UnsupportedCodingError(coding)
 
-    rows = read_csv(file, encoding=encoding)
-    rows = [{k:v.strip() for k,v in d.items()} for d in rows] # 去除空格
+def load_course_csv():
+    coding = _config.csvCoding.lower()
+    _config.check_csv_coding(coding)
+
+    if coding == "utf-8":
+        rows = read_csv(COURSE_UTF8_CSV, encoding="utf-8-sig")
+    elif coding == "gbk":
+        rows = read_csv(COURSE_GBK_CSV, encoding="gbk")
+    else:
+        raise NotImplementedError
+
+    rows = [ { k:v.strip() for k,v in d.items() } for d in rows ] # 去除空格
     courses = []
     for d in rows:
         for k,v in d.items():
-            if v.strip() == "": # 存在空格
+            if v.strip() == '': # 存在空格
                 break
         else:
             courses.append(Course(**d))

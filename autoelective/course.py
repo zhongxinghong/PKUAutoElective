@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: course.py
+# modified: 2019-09-08
 
-from .util import ImmutableAttrsMixin
-from .exceptions import StatusNotSetError
-
-__all__ = ["Course",]
+__all__ = ["Course"]
 
 
-class Course(ImmutableAttrsMixin):
+class Course(object):
 
     def __init__(self, name, classNo, school, status=None, href=None):
         self.name = name
@@ -18,10 +16,9 @@ class Course(ImmutableAttrsMixin):
         self.href = href     # 选课链接
 
     def is_available(self):
-        if self.status is None:
-            raise StatusNotSetError
+        assert self.status is not None
         limit, current = self.status
-        return (limit > current)
+        return limit > current
 
     def to_simplified(self):
         return Course(self.name, self.classNo, self.school)
@@ -33,7 +30,7 @@ class Course(ImmutableAttrsMixin):
             (self.name == other.name) and
             (self.classNo == other.classNo) and
             (self.school == other.school)
-            )
+        )
 
     def __repr__(self):
         if self.status is not None:
@@ -42,5 +39,4 @@ class Course(ImmutableAttrsMixin):
         else:
             return "Course(%s, %s, %s)" % (
             self.name, self.classNo, self.school)
-
 

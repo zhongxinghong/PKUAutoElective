@@ -1,50 +1,58 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: const.py
-
-import os
-import random
-from .util import NoInstance, mkdir
+# modified: 2019-09-09
 
 __all__ = [
 
-    "Base_Dir",
-    "Model_Dir",
-    "Cache_Dir",
-    "Log_Dir",
-    "Captcha_Cache_Dir",
+    "BASE_DIR",
+    "MODEL_DIR",
+    "CACHE_DIR",
+    "LOG_DIR",
+    "ERROR_LOG_DIR",
+    "CAPTCHA_CACHE_DIR",
+    "REQUEST_LOG_DIR",
 
-    "Course_UTF8_CSV",
-    "Course_GBK_CSV",
-    "Config_INI",
+    "COURSE_UTF8_CSV",
+    "COURSE_GBK_CSV",
+    "CONFIG_INI",
 
-    "User_Agent",
+    "USER_AGENT",
 
     "IAAALinks",
     "ElectiveLinks",
 
     ]
 
+import random
+from ._internal import mkdir, abspath
 
-__base_dir = os.path.dirname(__file__)
-__absP = lambda path: os.path.abspath(os.path.join(__base_dir, path))
+
+BASE_DIR          = abspath("./")
+MODEL_DIR         = abspath("./captcha/model/")
+CACHE_DIR         = abspath("../cache/")
+CAPTCHA_CACHE_DIR = abspath("../cache/captcha/")
+LOG_DIR           = abspath("../log/")
+ERROR_LOG_DIR     = abspath("../log/error")
+REQUEST_LOG_DIR   = abspath("../log/request/")
+
+COURSE_UTF8_CSV   = abspath("../course.utf-8.csv")
+COURSE_GBK_CSV    = abspath("../course.gbk.csv")
+CONFIG_INI        = abspath("../config.ini")
 
 
-Base_Dir          = __absP("./")
-Model_Dir         = __absP("./captcha/model/")
-Cache_Dir         = __absP("../cache/")
-Log_Dir           = __absP("../log/")
-Captcha_Cache_Dir = __absP("../cache/captcha/")
+mkdir(CACHE_DIR)
+mkdir(CAPTCHA_CACHE_DIR)
+mkdir(LOG_DIR)
+mkdir(ERROR_LOG_DIR)
+mkdir(REQUEST_LOG_DIR)
 
-Course_UTF8_CSV   = __absP("../course.utf-8.csv")
-Course_GBK_CSV    = __absP("../course.gbk.csv")
-Config_INI        = __absP("../config.ini")
 
 # 警惕直接复制的 User-Agent 中可能存在的省略号（通常源自 Firefox 开发者工具），它可能会引发如下错误：
 #   File "/usr/lib/python3.6/http/client.py", line 1212, in putheader
 #     values[i] = one_value.encode('latin-1')
 # UnicodeEncodeError: 'latin-1' codec can't encode character '\u2026' in position 30: ordinal not in range(256)
-User_Agent = random.choice([
+USER_AGENT = random.choice([
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.96 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.80 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36 OPR/58.0.3135.65",
@@ -62,27 +70,23 @@ User_Agent = random.choice([
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/11.1.2 Safari/605.1.15",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/11.1.1 Safari/605.1.15",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:62.0) Gecko/20100101 Firefox/62.0",
-    ])
+])
+# USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/75.0.3770.90 Chrome/75.0.3770.90 Safari/537.36"
 
-mkdir(Cache_Dir)
-mkdir(Log_Dir)
-mkdir(Captcha_Cache_Dir)
-
-
-class IAAALinks(object, metaclass=NoInstance):
+class IAAALinks(object):
     """
         Host
         OauthHomePage
         OauthLogin
     """
-    __Base_URL    = "https://iaaa.pku.edu.cn/iaaa"
+    _BASE_URL    = "https://iaaa.pku.edu.cn/iaaa"
 
     Host          = "iaaa.pku.edu.cn"
-    OauthHomePage = __Base_URL + "/oauth.jsp"
-    OauthLogin    = __Base_URL + "/oauthlogin.do"
+    OauthHomePage = _BASE_URL + "/oauth.jsp"
+    OauthLogin    = _BASE_URL + "/oauthlogin.do"
 
 
-class ElectiveLinks(object, metaclass=NoInstance):
+class ElectiveLinks(object):
     """
         Host
         SSOLoginRedirect        重定向链接
@@ -100,24 +104,24 @@ class ElectiveLinks(object, metaclass=NoInstance):
         DeleElecPlanCurriclum   删除选课计划（补退选阶段）
         validate                补退选验证码校验接口
     """
-    __Base_URL             = "http://elective.pku.edu.cn/elective2008"
-    __Controller_Base_URL  = __Base_URL + "/edu/pku/stu/elective/controller"
+    _BASE_URL             = "http://elective.pku.edu.cn/elective2008"
+    _CONTROLLER_BASE_URL  = _BASE_URL + "/edu/pku/stu/elective/controller"
 
     Host                   = "elective.pku.edu.cn"
     SSOLoginRedirect       = "http://elective.pku.edu.cn:80/elective2008/agent4Iaaa.jsp/../ssoLogin.do"
-    SSOLogin               = __Base_URL + "/ssoLogin.do"
+    SSOLogin               = _BASE_URL + "/ssoLogin.do"
     SSOLoginDualDegree     = "http://elective.pku.edu.cn:80/elective2008/scnStAthVef.jsp/../ssoLogin.do"
-    Logout                 = __Base_URL + "/logout.do"
-    HelpController         = __Controller_Base_URL + "/help/HelpController.jpf"
-    ElectivePlanController = __Controller_Base_URL + "/electivePlan/ElectivePlanController.jpf"
-    ElectiveWorkController = __Controller_Base_URL + "/electiveWork/ElectiveWorkController.jpf"
-    ShowResults            = __Controller_Base_URL + "/electiveWork/showResults.do"
-    SupplyCancel           = __Controller_Base_URL + "/supplement/SupplyCancel.do"
-    SupplyOnly             = __Controller_Base_URL + "/supplement/SupplyOnly.do"
-    #CourseQueryController  = __Controller_Base_URL + "/courseQuery/CourseQueryController.jpf"
-    #GetCurriculmByForm     = __Controller_Base_URL + "/courseQuery/getCurriculmByForm.do"
-    #AddToPlan              = __Controller_Base_URL + "/courseQuery/addToPlan.do"
-    #DeleElecPlanCurriclum  = __Controller_Base_URL + "/electivePlan/deleElecPlanCurriclum.do"
-    DrawServlet            = __Base_URL + "/DrawServlet"
-    Validate               = __Controller_Base_URL + "/supplement/validate.do"
+    Logout                 = _BASE_URL + "/logout.do"
+    HelpController         = _CONTROLLER_BASE_URL + "/help/HelpController.jpf"
+    ElectivePlanController = _CONTROLLER_BASE_URL + "/electivePlan/ElectivePlanController.jpf"
+    ElectiveWorkController = _CONTROLLER_BASE_URL + "/electiveWork/ElectiveWorkController.jpf"
+    ShowResults            = _CONTROLLER_BASE_URL + "/electiveWork/showResults.do"
+    SupplyCancel           = _CONTROLLER_BASE_URL + "/supplement/SupplyCancel.do"
+    SupplyOnly             = _CONTROLLER_BASE_URL + "/supplement/SupplyOnly.do"
+    # CourseQueryController  = _CONTROLLER_BASE_URL + "/courseQuery/CourseQueryController.jpf"
+    # GetCurriculmByForm     = _CONTROLLER_BASE_URL + "/courseQuery/getCurriculmByForm.do"
+    # AddToPlan              = _CONTROLLER_BASE_URL + "/courseQuery/addToPlan.do"
+    # DeleElecPlanCurriclum  = _CONTROLLER_BASE_URL + "/electivePlan/deleElecPlanCurriclum.do"
+    DrawServlet            = _BASE_URL + "/DrawServlet"
+    Validate               = _CONTROLLER_BASE_URL + "/supplement/validate.do"
 

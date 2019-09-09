@@ -1,187 +1,216 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: elective.py
+# modified: 2019-09-09
+
+__all__ = ["ElectiveClient"]
 
 import random
-from .client import ClientMixin
-from .hook import get_hooks, merge_hooks, with_etree,\
-    check_status_code, check_elective_title, check_elective_tips#, print_request_info
+from .client import BaseClient
+from .hook import *
+from .config import AutoElectiveConfig
 from .logger import ConsoleLogger
-from .util import Singleton
-from .const import User_Agent, ElectiveLinks
-
-__all__ = ["ElectiveClient",]
+from .utils import Singleton
+from .const import USER_AGENT, ElectiveLinks
 
 
-class ElectiveClient(ClientMixin, metaclass=Singleton):
+_logger = ConsoleLogger("elective")
+_config = AutoElectiveConfig()
 
-    Headers = {
+
+_hooks_check_status_code = get_hooks(
+    # debug_dump_request,
+    debug_print_request,
+    check_status_code,
+)
+
+_hooks_check_title = get_hooks(
+    debug_dump_request,
+    debug_print_request,
+    check_status_code,
+    with_etree,
+    check_elective_title,
+)
+
+_hooks_check_tips = get_hooks(
+    debug_dump_request,
+    debug_print_request,
+    check_status_code,
+    with_etree,
+    check_elective_title,
+    check_elective_tips,
+)
+
+
+def _get_headers_with_referer(kwargs, referer=ElectiveLinks.HelpController):
+    headers = kwargs.pop("headers", {})
+    headers["Referer"] = referer
+    return headers
+
+
+class ElectiveClient(BaseClient, metaclass=Singleton):
+
+    HEADERS = {
+        # "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3",
+        # "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
         "Host": ElectiveLinks.Host,
         "Upgrade-Insecure-Requests": "1",
-        "User-Agent": User_Agent,
+        "User-Agent": USER_AGENT,
     }
-    Timeout = 30 # elective 拥挤时可能会出现网络堵塞
-    __logger = ConsoleLogger("elective")
 
-    def __init__(self):
-        super(ElectiveClient, self).__init__()
-        self.__hooks_check_status_code = get_hooks(check_status_code)
-        self.__hooks_check_title = merge_hooks(self.__hooks_check_status_code, with_etree, check_elective_title)
-        self.__hooks_check_tips = merge_hooks(self.__hooks_check_title, check_elective_tips)
-
-    @staticmethod
-    def __get_headers_with_referer(kwargs, referer=ElectiveLinks.HelpController):
-        headers = kwargs.pop("headers", {})
-        headers["Referer"] = referer
-        return headers
+    TIMEOUT = _config.electiveClientTimeout  # elective 拥挤时可能会出现网络堵塞，可能需要将时间设长
 
     def sso_login(self, token, **kwargs):
-        resp = self._get(ElectiveLinks.SSOLogin,
-            params = {
+        r = self._get(
+            url=ElectiveLinks.SSOLogin,
+            params={
                 "rand": str(random.random()),
                 "token": token,
             },
-            hooks = self.__hooks_check_title,
-            **kwargs
-            ) # 无 Referer
-        self._save_cookies()
-        return resp
+            # 必须要随便指定一个 Cookie 否则无法会报 101 status_code
+            headers={
+                "Cookie": "JSESSIONID=TH9sd1HBgw0k3RTFxMHKmWpPp4bMJ5FnTGn7WmvyH2JmTqNGgxpS!1984960435",
+            },
+            hooks=_hooks_check_title,
+            **kwargs,
+        ) # 无 Referer
+        return r
 
     def sso_login_dual_degree(self, sida, sttp, referer, **kwargs):
         assert len(sida) == 32
         assert sttp in ("bzx", "bfx")
         headers = kwargs.pop("headers", {})
         headers["Referer"] = referer # 为之前登录的链接
-        resp = self._get(ElectiveLinks.SSOLoginDualDegree,
-            params = {
+        r = self._get(
+            url=ElectiveLinks.SSOLoginDualDegree,
+            params={
                 "sida": sida,
                 "sttp": sttp,
             },
-            headers = headers,
-            hooks = self.__hooks_check_title,
-            **kwargs
-            )
-        self._save_cookies()
-        return resp
+            headers=headers,
+            hooks=_hooks_check_title,
+            **kwargs,
+        )
+        return r
 
     def logout(self, **kwargs):
-        headers = self.__get_headers_with_referer(kwargs)
-        resp = self._get(ElectiveLinks.Logout,
-            headers = headers,
-            hooks = self.__hooks_check_title,
-            **kwargs
-            )
-        self._save_cookies()
-        return resp
+        headers = _get_headers_with_referer(kwargs)
+        r = self._get(
+            url=ElectiveLinks.Logout,
+            headers=headers,
+            hooks=_hooks_check_title,
+            **kwargs,
+        )
+        return r
 
     def get_HelpController(self, **kwargs):
         """ 帮助 """
-        resp = self._get(ElectiveLinks.HelpController,
-            hooks = self.__hooks_check_title,
-            **kwargs
-            ) # 无 Referer
-        self._save_cookies()
-        return resp
+        r = self._get(
+            url=ElectiveLinks.HelpController,
+            hooks=_hooks_check_title,
+            **kwargs,
+        ) # 无 Referer
+        return r
 
     def get_PlanController(self, **kwargs):
         """ 选课计划 """
-        headers = self.__get_headers_with_referer(kwargs)
-        resp = self._get(ElectiveLinks.ElectivePlanController,
-            headers = headers,
-            hooks = self.__hooks_check_title,
-            **kwargs
-            )
-        self._save_cookies()
-        return resp
+        headers = _get_headers_with_referer(kwargs)
+        r = self._get(
+            url=ElectiveLinks.ElectivePlanController,
+            headers=headers,
+            hooks=_hooks_check_title,
+            **kwargs,
+        )
+        return r
 
     def get_WorkController(self, **kwargs):
         """ 预选 """
-        headers = self.__get_headers_with_referer(kwargs)
-        resp = self._get(ElectiveLinks.ElectiveWorkController,
-            headers = headers,
-            hooks = self.__hooks_check_title,
-            **kwargs
-            )
-        self._save_cookies()
-        return resp
+        headers = _get_headers_with_referer(kwargs)
+        r = self._get(
+            url=ElectiveLinks.ElectiveWorkController,
+            headers=headers,
+            hooks=_hooks_check_title,
+            **kwargs,
+        )
+        return r
 
     def get_ShowResults(self, **kwargs):
         """ 选课结果 """
-        headers = self.__get_headers_with_referer(kwargs)
-        resp = self._get(ElectiveLinks.ShowResults,
-            headers = headers,
-            hooks = self.__hooks_check_title,
-            **kwargs
-            )
-        self._save_cookies()
-        return resp
+        headers = _get_headers_with_referer(kwargs)
+        r = self._get(
+            url=ElectiveLinks.ShowResults,
+            headers=headers,
+            hooks=_hooks_check_title,
+            **kwargs,
+        )
+        return r
 
     def get_SupplyCancel(self, **kwargs):
         """ 补退选 """
-        headers = self.__get_headers_with_referer(kwargs)
-        resp = self._get(ElectiveLinks.SupplyCancel,
-            headers = headers,
-            hooks = self.__hooks_check_title,
-            **kwargs
-            )
-        self._save_cookies()
-        return resp
+        headers = _get_headers_with_referer(kwargs)
+        r = self._get(
+            url=ElectiveLinks.SupplyCancel,
+            headers=headers,
+            hooks=_hooks_check_title,
+            **kwargs,
+        )
+        return r
 
-    '''def get_supplement(self, **kwargs): # 辅双第二页，通过输入数字 2 进行跳转
-        url = "http://elective.pku.edu.cn/elective2008/edu/pku/stu/elective/controller/supplement/supplement.jsp?netui_row=electableListGrid%3B50&netui_row=electResultLisGrid%3B0&conflictCourse="
-        headers = self.__get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel)
-        resp = self._get(url,
-            headers = headers,
-            hooks = self.__hooks_check_title,
-            **kwargs
-            )
-        self._save_cookies()
-        return resp'''
+    # def get_supplement(self, **kwargs): # 辅双第二页，通过输入数字 2 进行跳转
+    #     url = "http://elective.pku.edu.cn/elective2008/edu/pku/stu/elective/controller/supplement/supplement.jsp?netui_row=electableListGrid%3B50&netui_row=electResultLisGrid%3B0&conflictCourse="
+    #     headers = _get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel)
+    #     r = self._get(
+    #         url=url,
+    #         headers=headers,
+    #         hooks=_hooks_check_title,
+    #         **kwargs,
+    #     )
+    #     return r
 
     def get_SupplyOnly(self, **kwargs):
         """ 补选 """
-        headers = self.__get_headers_with_referer(kwargs)
-        resp = self._get(ElectiveLinks.SupplyOnly,
-            headers = headers,
-            hooks = self.__hooks_check_title,
-            **kwargs
-            )
-        self._save_cookies()
-        return resp
+        headers = _get_headers_with_referer(kwargs)
+        r = self._get(
+            url=ElectiveLinks.SupplyOnly,
+            headers=headers,
+            hooks=_hooks_check_title,
+            **kwargs,
+        )
+        return r
 
     def get_DrawServlet(self, **kwargs):
         """ 获得验证码 """
-        headers = self.__get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel)
-        resp = self._get(ElectiveLinks.DrawServlet,
-            params = {
+        headers = _get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel)
+        r = self._get(
+            url=ElectiveLinks.DrawServlet,
+            params={
                 "Rand": str(random.random() * 10000),
             },
-            headers = headers,
-            hooks = self.__hooks_check_status_code,
-            **kwargs
-            )
-        #self._save_cookies()
-        return resp
+            headers=headers,
+            hooks=_hooks_check_status_code,
+            **kwargs,
+        )
+        return r
 
     def get_Validate(self, captcha, **kwargs):
-        headers = self.__get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel)
-        resp = self._post(ElectiveLinks.Validate,
-            data = {
+        headers = _get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel)
+        r = self._post(
+            url=ElectiveLinks.Validate,
+            data={
                 "validCode": captcha,
             },
-            headers = headers,
-            hooks = self.__hooks_check_status_code,
-            **kwargs
-            )
-        #self._save_cookies()
-        return resp
+            headers=headers,
+            hooks=_hooks_check_status_code,
+            **kwargs,
+        )
+        return r
 
     def get_ElectSupplement(self, href, **kwargs):
-        headers = self.__get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel)
-        resp = self._get("http://{host}{href}".format(host=ElectiveLinks.Host, href=href),
-            headers = headers,
-            hooks = self.__hooks_check_tips,
-            **kwargs
-            )
-        self._save_cookies()
-        return resp
+        headers = _get_headers_with_referer(kwargs, ElectiveLinks.SupplyCancel)
+        r = self._get(
+            url="http://{host}{href}".format(host=ElectiveLinks.Host, href=href),
+            headers=headers,
+            hooks=_hooks_check_tips,
+            **kwargs,
+        )
+        return r

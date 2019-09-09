@@ -1,78 +1,47 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: logger.py
+# modified: 2019-09-09
+
+__all__ = ["ConsoleLogger","FileLogger"]
 
 import os
 import datetime
 import logging
-from .util import ReadonlyProperty
-from .const import Log_Dir
-from .exceptions import ABCNotImplementedError
-
-__all__ = [
-
-    "ConsoleLogger",
-    "FileLogger",
-
-    ]
+from .config import AutoElectiveConfig
+from .const import ERROR_LOG_DIR
+from ._internal import mkdir
 
 
-class LoggerMixin(object):
+_config = AutoElectiveConfig()
 
-    Level  = logging.DEBUG
-    #Format = logging.Formatter("[%(levelname)s] %(name)s, %(asctime)s, %(message)s", "%Y-%m-%d %H:%M:%S")
-    Format = logging.Formatter("[%(levelname)s] %(name)s, %(asctime)s, %(message)s", "%H:%M:%S")
+_USER_ERROR_LOG_DIR = os.path.join(ERROR_LOG_DIR, _config.get_user_subpath())
+mkdir(_USER_ERROR_LOG_DIR)
+
+
+class BaseLogger(object):
+
+    LEVEL  = logging.DEBUG
+    FORMAT = logging.Formatter("[%(levelname)s] %(name)s, %(asctime)s, %(message)s", "%H:%M:%S")
 
     def __init__(self, name):
         if self.__class__ is __class__:
-            raise ABCNotImplementedError
-        self.__name = name
+            raise NotImplementedError
+        self._name = name
         self._logger = logging.getLogger(name)
-        self._logger.setLevel(self.__class__.Level)
+        self._logger.setLevel(self.__class__.LEVEL)
         self._logger.addHandler(self._get_headler())
 
-    @ReadonlyProperty
+    @property
     def name(self):
-        return self.__name
+        return self._name
+
+    @property
+    def handlers(self):
+        return self._logger.handlers
 
     def _get_headler(self):
         raise NotImplementedError
-
-    """ 以下是对 logging 的各种日志等级常数的封装 """
-
-    @ReadonlyProperty
-    def NOTSET(self):
-        return logging.NOTSET
-
-    @ReadonlyProperty
-    def DEBUG(self):
-        return logging.DEBUG
-
-    @ReadonlyProperty
-    def INFO(self):
-        return logging.INFO
-
-    @ReadonlyProperty
-    def WARN(self):
-        return logging.WARN
-
-    @ReadonlyProperty
-    def WARNING(self):
-        return logging.WARNING
-
-    @ReadonlyProperty
-    def ERROR(self):
-        return logging.ERROR
-
-    @ReadonlyProperty
-    def FATAL(self):
-        return logging.FATAL
-
-    @ReadonlyProperty
-    def CRITICAL(self):
-        return logging.CRITICAL
-
-    """ 以下是对 logging 的各种输出函数的封装 """
 
     def log(self, level, msg, *args, **kwargs):
         return self._logger.log(level, msg, *args, **kwargs)
@@ -103,33 +72,30 @@ class LoggerMixin(object):
         return self._logger.critical(msg, *args, **kwargs)
 
 
-
-class ConsoleLogger(LoggerMixin):
+class ConsoleLogger(BaseLogger):
     """ 控制台日志输出类 """
 
-    Level = logging.DEBUG
+    LEVEL = logging.DEBUG
 
     def _get_headler(self):
-        """ 返回封装好的 console_headler """
         headler = logging.StreamHandler()
-        headler.setLevel(self.__class__.Level)
-        headler.setFormatter(self.__class__.Format)
+        headler.setLevel(self.__class__.LEVEL)
+        headler.setFormatter(self.__class__.FORMAT)
         return headler
 
 
-class FileLogger(LoggerMixin):
+class FileLogger(BaseLogger):
     """ 文件日志输出类 """
 
-    Level = logging.WARNING
+    LEVEL = logging.WARNING
 
     def _get_headler(self):
-        """ 返回封装好的  """
         filename = "%s.%s.log" % (
             self.name,
             datetime.date.strftime(datetime.date.today(), "%Y%m%d")
-            )
-        path = os.path.join(Log_Dir, filename)
-        headler = logging.FileHandler(path, encoding="utf-8")
-        headler.setLevel(self.__class__.Level)
-        headler.setFormatter(self.__class__.Format)
+        )
+        file = os.path.join(_USER_ERROR_LOG_DIR, filename)
+        headler = logging.FileHandler(file, encoding="utf-8-sig")
+        headler.setLevel(self.__class__.LEVEL)
+        headler.setFormatter(self.__class__.FORMAT)
         return headler
