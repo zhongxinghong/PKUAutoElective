@@ -20,7 +20,6 @@ WORKDIR /workspace
 CMD [ \
     "python", \
     "main.py", \
-    "--with-monitor", \
     "--config=/config/config.ini", \
     "--course-csv-gbk=/config/course.gbk.csv", \
     "--course-csv-utf8=/config/course.utf-8.csv" ]
