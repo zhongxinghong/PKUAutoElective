@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: loop.py
-# modified: 2019-09-09
+# modified: 2019-09-10
 
 __all__ = ["main"]
 
 import sys
 import time
 import random
+from queue import Queue, Empty
 from collections import deque
+from threading import Thread, Lock
 from requests.compat import json
 from requests.exceptions import RequestException
 from . import __version__, __date__
@@ -21,23 +23,31 @@ from .parser import load_course_csv, get_tables, get_courses, get_courses_with_d
 from .logger import ConsoleLogger, FileLogger
 from .exceptions import *
 
-
-iaaa = IAAAClient()
-elective = ElectiveClient()
-recognizer = CaptchaRecognizer()
-config = AutoElectiveConfig()
-
 cout = ConsoleLogger("loop")
 ferr = FileLogger("loop.error") # loop 的子日志，同步输出到 console
+
+config = AutoElectiveConfig()
 
 interval = config.refreshInterval
 deviation = config.refreshRandomDeviation
 isDualDegree = config.isDualDegree
 identity = config.identity
 page = config.supplyCancelPage
+loginLoopInterval = config.loginLoopInterval
+electivePoolSize = config.electiveClientPoolSize
 
 config.check_identify(identity)
 config.check_supply_cancel_page(page)
+
+recognizer = CaptchaRecognizer()
+electivePool = Queue(maxsize=electivePoolSize)
+reloginPool = Queue(maxsize=electivePoolSize)
+
+shouldKillAllThreads = False
+
+
+class _ElectiveNeedsLogin(Exception):
+    pass
 
 
 def _get_refresh_interval():
@@ -55,6 +65,34 @@ def _has_candidates(goals, ignored):
             continue
         count += 1
     return count > 0
+
+
+def _get_available_courses(goals, plans, elected, ignored):
+    queue = deque()
+    _ignored = [ x[0] for x in ignored ]
+    for c0 in goals:
+        if c0 in _ignored:
+            continue
+        for c in elected:
+            if c == c0:
+                cout.info("%s is elected, ignored" % c0)
+                ignored.append( (c0, "Elected") )
+                break
+        else:
+            for c in plans:
+                if c == c0:
+                    if c.is_available():
+                        queue.append(c)
+                        cout.info("%s is AVAILABLE now !" % c)
+                    break
+            else:
+                raise NotInCoursePlanException("%s is not in your course plan." % c0)
+    return queue
+
+
+def _task_setup_pools():
+    for i in range(1, electivePoolSize+1):
+        electivePool.put_nowait(ElectiveClient(id=i))
 
 
 def _task_print_header():
@@ -99,45 +137,7 @@ def _task_print_ignored(ignored):
     cout.info("")
 
 
-def _task_login():
-    """ 登录 """
-    cout.info("Try to login IAAA")
-    iaaa.clear_cookies()
-    elective.clear_cookies() # 清除旧的 cookies ，避免影响本次登录
-    iaaa.oauth_login()
-    resp = elective.sso_login(iaaa.token)
-    if isDualDegree:
-        sida = get_sida(resp)
-        sttp = identity
-        referer = resp.url
-        elective.sso_login_dual_degree(sida, sttp, referer)
-    cout.info("Login success")
-
-
-def _task_get_available_courses(goals, plans, elected, ignored):
-    queue = deque()
-    _ignored = [ x[0] for x in ignored ]
-    for c0 in goals:
-        if c0 in _ignored:
-            continue
-        for c in elected:
-            if c == c0:
-                cout.info("%s is elected, ignored" % c0)
-                ignored.append( (c0, "Elected") )
-                break
-        else:
-            for c in plans:
-                if c == c0:
-                    if c.is_available():
-                        queue.append(c)
-                        cout.info("%s is AVAILABLE now !" % c)
-                    break
-            else:
-                raise NotInCoursePlanException("%s is not in your course plan." % c0)
-    return queue
-
-
-def _task_validate_captcha():
+def _task_validate_captcha(elective):
     """ 填一次验证码 """
     while True:
         cout.info("Fetch a captcha")
@@ -151,8 +151,7 @@ def _task_validate_captcha():
             res = r.json()["valid"]  # 可能会返回一个错误网页 ...
         except Exception as e:
             ferr.error(e)
-            cout.warning("Unable to validate captcha")
-            raise OperationFailedError
+            raise OperationFailedError(msg="Unable to validate captcha")
 
         if res == "2":
             cout.info("Validation passed!")
@@ -165,13 +164,106 @@ def _task_validate_captcha():
             cout.warning("Unknown validation result: %s" % validRes)
 
 
-def main(goals=None, ignored=None, status=None):
+def _thread_login_loop(status):
+
+    elective = None
+
+    shouldQuitImmediately = False
+    global shouldKillAllThreads
+
+    while True:
+
+        if shouldKillAllThreads:
+            break
+
+        shouldQuitImmediately = False
+
+        if elective is None:
+            elective = reloginPool.get()
+
+        try:
+            cout.info("Try to login IAAA (client: %s)" % elective.id)
+
+            iaaa = IAAAClient() # not reusable
+
+            r = iaaa.oauth_login()
+            try:
+                token = r.json()["token"]
+            except Exception as e:
+                ferr.error(e)
+                raise OperationFailedError(msg="Unable to parse IAAA token. response body: %s" % r.content)
+
+            elective.clear_cookies()
+            r = elective.sso_login(token)
+
+            if isDualDegree:
+                sida = get_sida(r)
+                sttp = identity
+                referer = r.url
+                _ = elective.sso_login_dual_degree(sida, sttp, referer)
+
+            cout.info("Login success (client: %s)" % elective.id)
+
+            electivePool.put_nowait(elective)
+            elective = None
+
+        except (ServerError, StatusCodeError) as e:
+            ferr.error(e)
+            cout.warning("ServerError/StatusCodeError encountered")
+
+        except OperationFailedError as e:
+            ferr.error(e)
+            cout.warning("OperationFailedError encountered")
+
+        except RequestException as e:
+            ferr.error(e)
+            cout.warning("RequestException encountered")
+
+        except IAAAException as e:
+            ferr.error(e)
+            cout.warning("IAAAException encountered")
+
+        except CaughtCheatingError as e:
+            ferr.critical(e) # 严重错误
+            shouldQuitImmediately = True
+            raise e
+
+        except ElectiveException as e:
+            ferr.error(e)
+            cout.warning("ElectiveException encountered")
+
+        except json.JSONDecodeError as e:
+            ferr.error(e)
+            cout.warning("JSONDecodeError encountered")
+
+        except KeyboardInterrupt as e:
+            shouldQuitImmediately = True
+
+        except Exception as e:
+            ferr.exception(e)
+            shouldQuitImmediately = True
+            raise e
+
+        finally:
+            if shouldQuitImmediately:
+                shouldKillAllThreads = True
+                sys.exit(1)
+
+            t = loginLoopInterval
+            cout.info("")
+            cout.info("IAAA login loop sleep %s s" % t)
+            cout.info("")
+            time.sleep(t)
+
+
+def _thread_main_loop(goals, ignored, status):
 
     loop = 0
-    shouldQuitImmediately = False
+    elective = None
 
-    goals = load_course_csv() if goals is None else goals
-    ignored = [] if ignored is None else ignored  # (course, reason)
+    shouldQuitImmediately = False
+    shouldEnterNextLoopImmediately = False
+    global shouldKillAllThreads
 
     def _update_loop():
         if status is not None:
@@ -181,9 +273,17 @@ def main(goals=None, ignored=None, status=None):
         ignored.append( (course.to_simplified(), reason) )
 
 
+    _task_setup_pools()
     _task_print_header()
 
+
     while True:
+
+        if shouldKillAllThreads:
+            break
+
+        shouldQuitImmediately = False
+        shouldEnterNextLoopImmediately = False
 
         if not _has_candidates(goals, ignored):
             cout.info("No tasks, exit")
@@ -192,9 +292,9 @@ def main(goals=None, ignored=None, status=None):
         loop += 1
         _update_loop()
 
+        cout.info("")
         cout.info("======== Loop %d ========" % loop)
         cout.info("")
-
 
         # MARK: print current plans
 
@@ -202,12 +302,13 @@ def main(goals=None, ignored=None, status=None):
         _task_print_ignored(ignored)
 
         try:
+            if elective is None:
+                elective = electivePool.get()
+                cout.info("> Current client: %s" % elective.id)
+                cout.info("")
 
-            # MARK: login IAAA if needed
-
-            if iaaa.isTokenExpired:
-                _task_login()
-
+            if not elective.hasLogined:
+                raise _ElectiveNeedsLogin  # quit this loop
 
             # MARK: check supply/cancel page
 
@@ -237,7 +338,7 @@ def main(goals=None, ignored=None, status=None):
                 retry = 3
                 while True:
                     if retry == 0:
-                        raise OperationFailedError("unable to get normal Supplement page %s" % page)
+                        raise OperationFailedError(msg="unable to get normal Supplement page %s" % page)
 
                     cout.info("Get Supplement page %s" % page)
                     resp = elective.get_supplement(page=page) # 双学位第二页
@@ -258,7 +359,7 @@ def main(goals=None, ignored=None, status=None):
             # MARK: check available courses
 
             cout.info("Get available courses")
-            queue = _task_get_available_courses(goals, plans, elected, ignored)
+            queue = _get_available_courses(goals, plans, elected, ignored)
 
 
             # MAKR: elect available courses
@@ -270,7 +371,7 @@ def main(goals=None, ignored=None, status=None):
                 course = queue.popleft()
                 cout.info("Try to elect %s" % course)
 
-                _task_validate_captcha()
+                _task_validate_captcha(elective)
 
                 retryRequired = True
                 while retryRequired:
@@ -314,8 +415,6 @@ def main(goals=None, ignored=None, status=None):
                     except ElectionFailedError as e:
                         ferr.error(e)
                         cout.warning("ElectionFailedError encountered") # 具体原因不明，且不能马上重试
-                        # cout.info("Retry to elect %s" % course)
-                        # retryRequired = True
 
                     except Exception as e:
                         raise e
@@ -341,12 +440,18 @@ def main(goals=None, ignored=None, status=None):
             ferr.error(e)
             cout.warning("IAAAException encountered")
 
+        except _ElectiveNeedsLogin as e:
+            cout.info("client: %s needs Login" % elective.id)
+            reloginPool.put_nowait(elective)
+            elective = None
+            shouldEnterNextLoopImmediately = True
+
         except (SessionExpiredError, InvalidTokenError, NoAuthInfoError, SharedSessionError) as e:
-            cout.error(e)
-            iaaa.clear_token() # 删掉 token 下次循坏会重新登录
-            cout.info("Need to login")
-            iaaa.clear_cookies()     # 发生错误时很有可能是因为使用了过期 cookies ，由于 cookies 需要请求成功
-            elective.clear_cookies() # 才能刷新，因此请求失败时必须强制清除，否则会导致死循环
+            ferr.error(e)
+            cout.info("client: %s needs relogin" % elective.id)
+            reloginPool.put_nowait(elective)
+            elective = None
+            shouldEnterNextLoopImmediately = True
 
         except CaughtCheatingError as e:
             ferr.critical(e) # 严重错误
@@ -380,12 +485,39 @@ def main(goals=None, ignored=None, status=None):
 
         finally:
             if shouldQuitImmediately:
-                sys.exit(1)
-            shouldQuitImmediately = False
+                shouldKillAllThreads = True
+                sys.exit(2)
 
-            t = _get_refresh_interval()
-            cout.info("")
-            cout.info("======== END Loop %d ========" % loop)
-            cout.info("Sleep %s s" % t)
-            cout.info("")
-            time.sleep(t)
+            if elective is not None: # change elective client
+                electivePool.put_nowait(elective)
+                elective = None
+
+            if shouldEnterNextLoopImmediately:
+                cout.info("")
+                cout.info("======== END Loop %d ========" % loop)
+                cout.info("")
+            else:
+                t = _get_refresh_interval()
+                cout.info("")
+                cout.info("======== END Loop %d ========" % loop)
+                cout.info("Main loop sleep %s s" % t)
+                cout.info("")
+                time.sleep(t)
+
+
+def main(goals=None, ignored=None, status=None):
+
+    goals = load_course_csv() if goals is None else goals
+    ignored = [] if ignored is None else ignored  # (course, reason)
+
+    tList = [
+        Thread(target=_thread_login_loop, name="Loop-Login", args=(status,)),
+        Thread(target=_thread_main_loop, name="Loop-Main", args=(goals, ignored, status))
+    ]
+
+    for t in tList:
+        t.daemon = True
+        t.start()
+
+    for t in tList:
+        t.join()

@@ -1,6 +1,15 @@
 Migration Guide
 ====================
 
+v2.0.3 -> v2.0.4
+------------------
+- `config.ini` 内添加了 elective 多会话相关的配置
+- `config.ini` 内删除了 `iaaa_relogin_interval` 字段
+
+#### Development Related
+
+- 为了应对选课网偶发的会话过期问题，为 elective 客户端引入了多会话机制，并删除了旧有的定时重登机制。具体见 README 中的 [运行流程](/README.md#运行流程) 小节
+
 v2.0.1 -> v2.0.2
 ------------------
 - `config.ini` 内添加了 `client/supply_cancel_page` 值，以支持不处于选课计划第一页的课程

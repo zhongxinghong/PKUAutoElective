@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: iaaa.py
-# modified: 2019-09-09
+# modified: 2019-09-10
 
 __all__ = ["IAAAClient"]
 
-import time
 from .client import BaseClient
 from .hook import *
 from .logger import ConsoleLogger
-from .utils import Singleton
 from .config import AutoElectiveConfig
 from .const import USER_AGENT, IAAALinks, ElectiveLinks
-from .exceptions import IAAANotSuccessError
 
 
 _config = AutoElectiveConfig()
@@ -25,7 +22,7 @@ _hooks_check_iaaa_success = get_hooks(
 )
 
 
-class IAAAClient(BaseClient, metaclass=Singleton):
+class IAAAClient(BaseClient):
 
     HEADERS = {
         "Host": IAAALinks.Host,
@@ -35,26 +32,6 @@ class IAAAClient(BaseClient, metaclass=Singleton):
     }
 
     TIMEOUT = _config.iaaaClientTimeout
-
-    def __init__(self):
-        super(IAAAClient, self).__init__()
-        self._token = None
-        self._token_expired_time = None
-
-
-    @property
-    def token(self):
-        return self._token
-
-    @property
-    def isTokenExpired(self):
-        if self._token is None or self._token_expired_time is None:
-            return True
-        return time.time() > self._token_expired_time
-
-    def clear_token(self):
-        self._token = None
-        self._token_expired_time = None
 
 
     def oauth_login(self, **kwargs):
@@ -78,5 +55,4 @@ class IAAAClient(BaseClient, metaclass=Singleton):
             hooks=_hooks_check_iaaa_success,
             **kwargs,
         )
-        self._token = r.json()["token"]
-        self._token_expired_time = time.time() + _config.iaaaReloginInterval
+        return r

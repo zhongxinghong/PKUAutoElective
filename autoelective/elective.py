@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: elective.py
-# modified: 2019-09-09
+# modified: 2019-09-10
 
 __all__ = ["ElectiveClient"]
 
@@ -10,7 +10,6 @@ from .client import BaseClient
 from .hook import *
 from .config import AutoElectiveConfig
 from .logger import ConsoleLogger
-from .utils import Singleton
 from .const import USER_AGENT, ElectiveLinks
 
 
@@ -48,7 +47,7 @@ def _get_headers_with_referer(kwargs, referer=ElectiveLinks.HelpController):
     return headers
 
 
-class ElectiveClient(BaseClient, metaclass=Singleton):
+class ElectiveClient(BaseClient):
 
     HEADERS = {
         # "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3",
@@ -59,6 +58,19 @@ class ElectiveClient(BaseClient, metaclass=Singleton):
     }
 
     TIMEOUT = _config.electiveClientTimeout  # elective 拥挤时可能会出现网络堵塞，可能需要将时间设长
+
+    def __init__(self, id):
+        super(ElectiveClient, self).__init__()
+        self._id = id
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def hasLogined(self):
+        return len(self._session.cookies) > 0
+
 
     def sso_login(self, token, **kwargs):
         r = self._get(

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: main.py
-# modified: 2019-09-08
+# modified: 2019-09-10
 
 from optparse import OptionParser
 from multiprocessing import Process, Manager
@@ -31,7 +31,7 @@ def task_run_loop_with_monitor():
 
 
         pList = [
-            Process(target=run_main_loop, args=(goals, ignored, status), name="MainLoop"),
+            Process(target=run_main_loop, args=(goals, ignored, status), name="Loop"),
             Process(target=run_monitor, args=(goals, ignored, status), name="Monitor"),
         ]
 

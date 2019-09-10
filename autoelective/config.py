@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: config.py
-# modified: 2019-09-09
+# modified: 2019-09-10
 
 __all__ = ["AutoElectiveConfig"]
 
@@ -90,16 +90,20 @@ class AutoElectiveConfig(BaseConfig):
         return self.getfloat("client", "random_deviation")
 
     @property
-    def iaaaReloginInterval(self):
-        return self.getfloat("client", "iaaa_relogin_interval")
-
-    @property
     def iaaaClientTimeout(self):
         return self.getfloat("client", "iaaa_client_timeout")
 
     @property
     def electiveClientTimeout(self):
         return self.getfloat("client", "elective_client_timeout")
+
+    @property
+    def electiveClientPoolSize(self):
+        return self.getint("client", "elective_client_pool_size")
+
+    @property
+    def loginLoopInterval(self):
+        return self.getfloat("client", "login_loop_interval")
 
     @property
     def isDebugPrintRequest(self):
