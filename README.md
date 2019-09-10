@@ -229,12 +229,13 @@ autoelective/
 该线程负责轮询选课网及提交选课请求，运行流程如下：
 
 1. 一次循环回合开始，打印候选课程的列表和已忽略课程的列表。
-2. 从 `electivePool` 中获取一个客户端，如果 `electivePool` 为空则阻塞线程，如果客户端尚未登录，则立刻停止当前回合，跳至步骤 (7)
+2. 从 `electivePool` 中获取一个客户端，如果 `electivePool` 为空则阻塞线程，如果客户端尚未登录，则立刻停止当前回合，跳至步骤 (8)
 3. 获得补退选页的 HTML ，并解析 “选课计划” 列表和 “已选课程” 列表。
 4. 校验 `course.csv` 所列课程的合理性（即必须出现在 “选课计划” 或 “已选课程” 中），随后结合上一步的结果筛选出当回合有选课名额的课程。
 5. 如果发现存在可选的课程，则依次提交选课请求。在每次提交前先自动识别一张验证码。
 6. 根据请求结果调整候选课程列表，并结束当次回合。
-7. 当次循环回合结束后，等待一个带随机偏量的 `refresh_interval` 时间（可在 `config.ini` 中修改该值）。
+7. 将当前客户端放回 `electivePool` ，下回合会重新选择一个客户端
+8. 当次循环回合结束后，等待一个带随机偏量的 `refresh_interval` 时间（可在 `config.ini` 中修改该值）。
 
 #### monitor 进程
 
@@ -253,8 +254,8 @@ autoelective/
 
 - `client/iaaa_client_timeout` IAAA 客户端的最长请求超时
 - `client/elective_client_timeout` Elective 客户端的最长请求超时，考虑到选课网在网络阻塞的时候响应时间会很长，这个时间默认比 IAAA 的客户端要长
-- `client/elective_client_pool_size` Elective 客户端池的最大容量
-- `client/login_loop_interval` IAAA 登录循环每次两回合的时间间隔
+- `client/elective_client_pool_size` Elective 客户端池的最大容量。注：根据观察，每个 IP 似乎只能总共同时持有 **5 个会话**，否则会遇到 elective 登录时无限超时的问题。因此这个这个值不宜大于 5 （如果你还需要通过浏览器访问选课网，则不能大于 4）。
+- `client/login_loop_interval` IAAA 登录循环每两回合的时间间隔
 
 
 ## 异常处理
