@@ -1,6 +1,6 @@
 # PKUAutoElective
 
-北大选课网 **补退选** 阶段自动选课小工具 v2.0.8 (2019.09.11)
+北大选课网 **补退选** 阶段自动选课小工具 v2.0.9 (2019.09.12)
 
 目前支持 `本科生（含辅双）` 和 `研究生` 选课
 
@@ -196,7 +196,6 @@ autoelective/
 │   │   └── SVM.model.f3.l1.c9.xz
 │   └── processor.py                          验证码图像处理相关的函数
 ├── client.py                                 客户端的基类
-├── compat.py                                 兼容性相关
 ├── config.py                                 ini 配置文件的解析类及配置的模型声明
 ├── const.py                                  文件夹路径、URL 等常数
 ├── course.py                                 课程模型
