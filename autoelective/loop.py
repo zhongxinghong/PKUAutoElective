@@ -23,6 +23,7 @@ from .logger import ConsoleLogger, FileLogger
 from .const import SIGNAL_KILL_ALL_PROCESSES
 from .exceptions import *
 
+
 cout = ConsoleLogger("loop")
 ferr = FileLogger("loop.error") # loop 的子日志，同步输出到 console
 
@@ -47,9 +48,6 @@ shouldKillAllThreads = False
 
 
 class _ElectiveNeedsLogin(Exception):
-    pass
-
-class _ThreadShouldBeKilled(Exception):
     pass
 
 
@@ -266,6 +264,7 @@ def _thread_login_loop(status):
 
         except KeyboardInterrupt as e:
             shouldQuitImmediately = True
+            raise e
 
         except Exception as e:
             ferr.exception(e)

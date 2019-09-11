@@ -22,6 +22,7 @@ def task_run_loop_with_monitor():
     from autoelective.monitor import main as run_monitor
     from autoelective.logger import ConsoleLogger
     from autoelective.const import SIGNAL_KILL_ALL_PROCESSES
+    from autoelective.compat import install_ctrl_c_handler
 
     cout = ConsoleLogger("main")
     signals = Queue()
@@ -43,6 +44,8 @@ def task_run_loop_with_monitor():
         for p in pList:
             p.daemon = True
             p.start()
+
+        install_ctrl_c_handler()
 
         while True:
             signal = signals.get()
