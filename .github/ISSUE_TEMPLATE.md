@@ -5,6 +5,7 @@
 
 ### Version / Environment
 
+System infomation: [ ] \( Windows10 64bit, MacOS 10.13.6, Ubuntu 18.04.3 amd64, ... )
 Python version: [ ] \( run `python3 --version` )
 AutoElective version: [ ] \( run `python3 main.py --version` )
 
