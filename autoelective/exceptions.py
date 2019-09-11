@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: exceptions.py
-# modified: 2019-09-09
+# modified: 2019-09-11
 
 __all__ = [
 
@@ -18,6 +18,8 @@ __all__ = [
 
         "IAAAException",
             "IAAANotSuccessError",
+                "IAAAIncorrectPasswordError",
+                "IAAAForbiddenError",
 
         "ElectiveException",
 
@@ -100,8 +102,9 @@ class IAAAException(AutoElectiveClientException):
     code = 200
     desc = "IAAAException"
 
+
 class IAAANotSuccessError(IAAAException):
-    code = 201
+    code = 210
     desc = "response.json()['success'] == False"
 
     def __init__(self, *args, **kwargs):
@@ -109,6 +112,14 @@ class IAAANotSuccessError(IAAAException):
         if r is not None and "msg" not in kwargs:
             kwargs["msg"] = "%s. response JSON: %s" % (self.__class__.code, r.json())
         super().__init__(*args, **kwargs)
+
+class IAAAIncorrectPasswordError(IAAANotSuccessError):
+    code = 211
+    desc = "User ID or Password is incorrect"
+
+class IAAAForbiddenError(IAAANotSuccessError):
+    code = 212
+    desc = "You are FORBIDDEN. Please sign in after a half hour"
 
 
 class ElectiveException(AutoElectiveClientException):

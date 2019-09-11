@@ -1,6 +1,13 @@
 Migration Guide
 ====================
 
+v2.0.4 -> v2.0.5
+------------------
+
+#### Development Related
+
+- 修改了错误类 `IAAANotSuccessError` 的全局错误码
+
 v2.0.3 -> v2.0.4
 ------------------
 - `config.ini` 内添加了 elective 多会话相关的配置

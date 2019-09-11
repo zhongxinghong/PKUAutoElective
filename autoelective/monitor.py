@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: monitor.py
-# modified: 2019-09-08
+# modified: 2019-09-11
 
 __all__ = ["main"]
 
@@ -18,7 +18,7 @@ ferr = ConsoleLogger("monitor.error")
 config = AutoElectiveConfig()
 
 
-def main(goals, ignored, status):
+def main(signals, goals, ignored, status):
 
     monitor = Flask(__name__)
 

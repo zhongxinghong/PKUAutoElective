@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: loop.py
-# modified: 2019-09-10
+# modified: 2019-09-11
 
 __all__ = ["main"]
 
-import sys
 import time
 import random
 from queue import Queue, Empty
 from collections import deque
-from threading import Thread, Lock
+from threading import Thread, current_thread
 from requests.compat import json
 from requests.exceptions import RequestException
 from . import __version__, __date__
@@ -21,6 +20,7 @@ from .course import Course
 from .config import AutoElectiveConfig
 from .parser import load_course_csv, get_tables, get_courses, get_courses_with_detail, get_sida
 from .logger import ConsoleLogger, FileLogger
+from .const import SIGNAL_KILL_ALL_PROCESSES
 from .exceptions import *
 
 cout = ConsoleLogger("loop")
@@ -47,6 +47,9 @@ shouldKillAllThreads = False
 
 
 class _ElectiveNeedsLogin(Exception):
+    pass
+
+class _ThreadShouldBeKilled(Exception):
     pass
 
 
@@ -164,6 +167,17 @@ def _task_validate_captcha(elective):
             cout.warning("Unknown validation result: %s" % validRes)
 
 
+def _task_print_current_thread_killed():
+    cout.info("Kill thread %s" % current_thread().name)
+
+
+def _task_send_signal_to_kill_all_blocking_threads():
+    if electivePool.empty():
+        electivePool.put_nowait(None)
+    if reloginPool.empty():
+        reloginPool.put_nowait(None)
+
+
 def _thread_login_loop(status):
 
     elective = None
@@ -173,13 +187,17 @@ def _thread_login_loop(status):
 
     while True:
 
-        if shouldKillAllThreads:
-            break
-
         shouldQuitImmediately = False
+
+        if shouldKillAllThreads: # a signal to kill this thread
+            _task_print_current_thread_killed()
+            return
 
         if elective is None:
             elective = reloginPool.get()
+            if elective is None: # a signal to kill this thread
+                _task_print_current_thread_killed()
+                return
 
         try:
             cout.info("Try to login IAAA (client: %s)" % elective.id)
@@ -219,6 +237,16 @@ def _thread_login_loop(status):
             ferr.error(e)
             cout.warning("RequestException encountered")
 
+        except IAAAIncorrectPasswordError as e:
+            cout.error(e)
+            shouldQuitImmediately = True
+            raise e
+
+        except IAAAForbiddenError as e:
+            ferr.error(e)
+            shouldQuitImmediately = True
+            raise e
+
         except IAAAException as e:
             ferr.error(e)
             cout.warning("IAAAException encountered")
@@ -247,7 +275,9 @@ def _thread_login_loop(status):
         finally:
             if shouldQuitImmediately:
                 shouldKillAllThreads = True
-                sys.exit(1)
+                _task_print_current_thread_killed()
+                _task_send_signal_to_kill_all_blocking_threads()
+                return
 
             t = loginLoopInterval
             cout.info("")
@@ -279,15 +309,18 @@ def _thread_main_loop(goals, ignored, status):
 
     while True:
 
-        if shouldKillAllThreads:
-            break
-
         shouldQuitImmediately = False
         shouldEnterNextLoopImmediately = False
 
+        if shouldKillAllThreads: # a signal to kill this thread
+            _task_print_current_thread_killed()
+            return
+
         if not _has_candidates(goals, ignored):
             cout.info("No tasks, exit")
-            break
+            _task_print_current_thread_killed()
+            _task_send_signal_to_kill_all_blocking_threads()
+            return
 
         loop += 1
         _update_loop()
@@ -304,8 +337,12 @@ def _thread_main_loop(goals, ignored, status):
         try:
             if elective is None:
                 elective = electivePool.get()
-                cout.info("> Current client: %s" % elective.id)
-                cout.info("")
+                if elective is None: # a signal to kill this thread
+                    shouldQuitImmediately = True
+                    return # log will be print in `finally` block
+
+            cout.info("> Current client: %s, (qsize: %s)" % (elective.id, electivePool.qsize() + 1))
+            cout.info("")
 
             if not elective.hasLogined:
                 raise _ElectiveNeedsLogin  # quit this loop
@@ -486,7 +523,9 @@ def _thread_main_loop(goals, ignored, status):
         finally:
             if shouldQuitImmediately:
                 shouldKillAllThreads = True
-                sys.exit(2)
+                _task_print_current_thread_killed()
+                _task_send_signal_to_kill_all_blocking_threads()
+                return
 
             if elective is not None: # change elective client
                 electivePool.put_nowait(elective)
@@ -505,7 +544,7 @@ def _thread_main_loop(goals, ignored, status):
                 time.sleep(t)
 
 
-def main(goals=None, ignored=None, status=None):
+def main(signals=None, goals=None, ignored=None, status=None):
 
     goals = load_course_csv() if goals is None else goals
     ignored = [] if ignored is None else ignored  # (course, reason)
@@ -519,5 +558,11 @@ def main(goals=None, ignored=None, status=None):
         t.daemon = True
         t.start()
 
-    for t in tList:
-        t.join()
+    try:
+        for t in tList:
+            t.join()
+    except Exception as e:
+        raise e
+    finally:
+        if signals is not None:
+            signals.put_nowait(SIGNAL_KILL_ALL_PROCESSES)

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: const.py
-# modified: 2019-09-09
+# modified: 2019-09-11
 
 __all__ = [
+
+    "SIGNAL_KILL_ALL_PROCESSES",
+    "SIGNAL_KILL_ALL_THREADS",
 
     "BASE_DIR",
     "MODEL_DIR",
@@ -26,6 +29,10 @@ __all__ = [
 
 import random
 from ._internal import mkdir, abspath
+
+
+SIGNAL_KILL_ALL_PROCESSES = 1
+SIGNAL_KILL_ALL_THREADS = 2
 
 
 BASE_DIR          = abspath("./")

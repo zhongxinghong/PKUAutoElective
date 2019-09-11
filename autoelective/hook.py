@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: hook.py
-# modified: 2019-09-09
+# modified: 2019-09-11
 
 __all__ = [
 
@@ -84,8 +84,23 @@ def check_status_code(r, **kwargs):
 
 
 def check_iaaa_success(r, **kwargs):
-    _json = r.json()
-    if not _json.get("success", False):
+    respJson = r.json()
+
+    if not respJson.get("success", False):
+        try:
+            errors = respJson["errors"]
+            code = errors["code"]
+            msg = errors["msg"]
+        except Exception as e:
+            cout.error(e)
+            cout.info("Unable to get errcode/errmsg from response JSON")
+            pass
+        else:
+            if code == "E01":
+                raise IAAAIncorrectPasswordError(response=r, msg=msg)
+            elif code == "E21":
+                raise IAAAForbiddenError(response=r, msg=msg)
+
         raise IAAANotSuccessError(response=r)
 
 

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: main.py
-# modified: 2019-09-10
+# modified: 2019-09-11
 
+import time
 from optparse import OptionParser
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Manager, Queue
 from autoelective import __version__, __date__
 
 
@@ -19,6 +20,11 @@ def task_run_loop_with_monitor():
     from autoelective.parser import load_course_csv
     from autoelective.loop import main as run_main_loop
     from autoelective.monitor import main as run_monitor
+    from autoelective.logger import ConsoleLogger
+    from autoelective.const import SIGNAL_KILL_ALL_PROCESSES
+
+    cout = ConsoleLogger("main")
+    signals = Queue()
 
     with Manager() as manager:
 
@@ -29,19 +35,24 @@ def task_run_loop_with_monitor():
 
         status["loop"] = 0
 
-
         pList = [
-            Process(target=run_main_loop, args=(goals, ignored, status), name="Loop"),
-            Process(target=run_monitor, args=(goals, ignored, status), name="Monitor"),
+            Process(target=run_main_loop, args=(signals, goals, ignored, status), name="Loop"),
+            Process(target=run_monitor, args=(signals, goals, ignored, status), name="Monitor"),
         ]
 
         for p in pList:
             p.daemon = True
             p.start()
 
-        for p in pList:
-            p.join()
-
+        while True:
+            signal = signals.get()
+            time.sleep(0.1) # Wait a minute
+            if signal == SIGNAL_KILL_ALL_PROCESSES:
+                for p in pList:
+                    if p.is_alive():
+                        p.terminate()
+                    cout.info("Process %s is killed" % p.name)
+                break
 
 def main():
 
