@@ -3,6 +3,6 @@
 # filename: __init__.py
 # modified: 2019-09-11
 
-__version__ = "2.0.7"
+__version__ = "2.0.8"
 __date__    = "2019.09.11"
 __author__  = "Rabbit"

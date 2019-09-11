@@ -12,7 +12,22 @@ from autoelective import __version__, __date__
 def task_run_loop():
 
     from autoelective.loop import main as run_main_loop
-    run_main_loop()
+    from autoelective.compat import install_ctrl_c_handler
+
+    p = Process(target=run_main_loop, name="Main")
+    p.daemon = True
+    p.start()
+
+    install_ctrl_c_handler()
+
+    #
+    # Windows 下 p.join() 时无法接收到来自 Ctrl + C 的 SIGINT 信号
+    #
+    # 此处改用 Queue.get 来代替 p.join 阻塞主进程，这种情况下 Ctrl + C 仍然有效
+    #
+    # (你问我为什么？？ ......  :)
+    #
+    _ = Queue().get()
 
 
 def task_run_loop_with_monitor():
@@ -41,7 +56,7 @@ def task_run_loop_with_monitor():
 
 
         pList = [
-            Process(target=run_main_loop, args=(signals, goals, ignored, status), name="Loop"),
+            Process(target=run_main_loop, args=(signals, goals, ignored, status), name="Main"),
             Process(target=run_monitor, args=(signals, goals, ignored, status), name="Monitor"),
         ]
 
