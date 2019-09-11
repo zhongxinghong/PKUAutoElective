@@ -9,7 +9,7 @@ import time
 import random
 from queue import Queue, Empty
 from collections import deque
-from threading import Thread, current_thread
+from threading import Thread, Lock, current_thread
 from requests.compat import json
 from requests.exceptions import RequestException
 from . import __version__, __date__
@@ -41,8 +41,11 @@ config.check_identify(identity)
 config.check_supply_cancel_page(page)
 
 recognizer = CaptchaRecognizer()
+
 electivePool = Queue(maxsize=electivePoolSize)
 reloginPool = Queue(maxsize=electivePoolSize)
+
+statusLock = Lock()
 
 shouldKillAllThreads = False
 
@@ -165,6 +168,26 @@ def _task_validate_captcha(elective):
             cout.warning("Unknown validation result: %s" % validRes)
 
 
+def _task_increase_error_count(status, error):
+    if status is None:
+        return
+
+    cls = error.__class__
+    name = cls.__name__
+    if hasattr(cls, "code"):
+        code = error.code
+        key = "[%s] %s" % (code, name)
+    else:
+        key = name
+
+    with statusLock:
+        if key not in status["errors"]:
+            status["errors"][key] = 1
+        else:
+            status["errors"][key] += 1
+        status["error_count"] += 1
+
+
 def _task_print_current_thread_killed():
     cout.info("Kill thread %s" % current_thread().name)
 
@@ -178,10 +201,18 @@ def _task_send_signal_to_kill_all_blocking_threads():
 
 def _thread_login_loop(status):
 
+    loop = 0
     elective = None
 
     shouldQuitImmediately = False
     global shouldKillAllThreads
+
+    def _update_loop():
+        nonlocal loop
+        loop += 1
+        if status is not None:
+            status["login_loop"] = loop
+
 
     while True:
 
@@ -196,6 +227,8 @@ def _thread_login_loop(status):
             if elective is None: # a signal to kill this thread
                 _task_print_current_thread_killed()
                 return
+
+        _update_loop()
 
         try:
             cout.info("Try to login IAAA (client: %s)" % elective.id)
@@ -226,48 +259,59 @@ def _thread_login_loop(status):
         except (ServerError, StatusCodeError) as e:
             ferr.error(e)
             cout.warning("ServerError/StatusCodeError encountered")
+            _task_increase_error_count(status, e)
 
         except OperationFailedError as e:
             ferr.error(e)
             cout.warning("OperationFailedError encountered")
+            _task_increase_error_count(status, e)
 
         except RequestException as e:
             ferr.error(e)
             cout.warning("RequestException encountered")
+            _task_increase_error_count(status, e)
 
         except IAAAIncorrectPasswordError as e:
             cout.error(e)
+            _task_increase_error_count(status, e)
             shouldQuitImmediately = True
             raise e
 
         except IAAAForbiddenError as e:
             ferr.error(e)
+            _task_increase_error_count(status, e)
             shouldQuitImmediately = True
             raise e
 
         except IAAAException as e:
             ferr.error(e)
             cout.warning("IAAAException encountered")
+            _task_increase_error_count(status, e)
 
         except CaughtCheatingError as e:
             ferr.critical(e) # 严重错误
+            _task_increase_error_count(status, e)
             shouldQuitImmediately = True
             raise e
 
         except ElectiveException as e:
             ferr.error(e)
             cout.warning("ElectiveException encountered")
+            _task_increase_error_count(status, e)
 
         except json.JSONDecodeError as e:
             ferr.error(e)
             cout.warning("JSONDecodeError encountered")
+            _task_increase_error_count(status, e)
 
         except KeyboardInterrupt as e:
+            _task_increase_error_count(status, e)
             shouldQuitImmediately = True
             raise e
 
         except Exception as e:
             ferr.exception(e)
+            _task_increase_error_count(status, e)
             shouldQuitImmediately = True
             raise e
 
@@ -295,8 +339,10 @@ def _thread_main_loop(goals, ignored, status):
     global shouldKillAllThreads
 
     def _update_loop():
+        nonlocal loop
+        loop += 1
         if status is not None:
-            status["loop"] = loop
+            status["main_loop"] = loop
 
     def _ignore_course(course, reason):
         ignored.append( (course.to_simplified(), reason) )
@@ -321,7 +367,6 @@ def _thread_main_loop(goals, ignored, status):
             _task_send_signal_to_kill_all_blocking_threads()
             return
 
-        loop += 1
         _update_loop()
 
         cout.info("")
@@ -419,31 +464,37 @@ def _thread_main_loop(goals, ignored, status):
                         ferr.error(e)
                         cout.warning("ElectionRepeatedError encountered")
                         _ignore_course(course, reason="Repeated")
+                        _task_increase_error_count(status, e)
 
                     except TimeConflictError as e:
                         ferr.error(e)
                         cout.warning("TimeConflictError encountered")
                         _ignore_course(course, reason="Time conflict")
+                        _task_increase_error_count(status, e)
 
                     except ExamTimeConflictError as e:
                         ferr.error(e)
                         cout.warning("ExamTimeConflictError encountered")
                         _ignore_course(course, reason="Exam time conflict")
+                        _task_increase_error_count(status, e)
 
                     except ElectionPermissionError as e:
                         ferr.error(e)
                         cout.warning("ElectionPermissionError encountered")
                         _ignore_course(course, reason="Permission required")
+                        _task_increase_error_count(status, e)
 
                     except CreditsLimitedError as e:
                         ferr.error(e)
                         cout.warning("CreditsLimitedError encountered")
                         _ignore_course(course, reason="Credits limited")
+                        _task_increase_error_count(status, e)
 
                     except MutuallyExclusiveCourseError as e:
                         ferr.error(e)
                         cout.warning("MutuallyExclusiveCourseError encountered")
                         _ignore_course(course, reason="Mutual exclusive")
+                        _task_increase_error_count(status, e)
 
                     except ElectionSuccess as e:
                         cout.info("%s is ELECTED !" % course) # 不从此处加入 ignored ，而是在下回合根据实际选课结果来决定是否忽略
@@ -451,30 +502,36 @@ def _thread_main_loop(goals, ignored, status):
                     except ElectionFailedError as e:
                         ferr.error(e)
                         cout.warning("ElectionFailedError encountered") # 具体原因不明，且不能马上重试
+                        _task_increase_error_count(status, e)
 
                     except Exception as e:
-                        raise e
+                        raise e  # don't increase error count here
 
         except NotInCoursePlanException as e:
             cout.error(e)
+            _task_increase_error_count(status, e)
             shouldQuitImmediately = True
             raise e
 
         except (ServerError, StatusCodeError) as e:
             ferr.error(e)
             cout.warning("ServerError/StatusCodeError encountered")
+            _task_increase_error_count(status, e)
 
         except OperationFailedError as e:
             ferr.error(e)
             cout.warning("OperationFailedError encountered")
+            _task_increase_error_count(status, e)
 
         except RequestException as e:
             ferr.error(e)
             cout.warning("RequestException encountered")
+            _task_increase_error_count(status, e)
 
         except IAAAException as e:
             ferr.error(e)
             cout.warning("IAAAException encountered")
+            _task_increase_error_count(status, e)
 
         except _ElectiveNeedsLogin as e:
             cout.info("client: %s needs Login" % elective.id)
@@ -484,6 +541,7 @@ def _thread_main_loop(goals, ignored, status):
 
         except (SessionExpiredError, InvalidTokenError, NoAuthInfoError, SharedSessionError) as e:
             ferr.error(e)
+            _task_increase_error_count(status, e)
             cout.info("client: %s needs relogin" % elective.id)
             reloginPool.put_nowait(elective)
             elective = None
@@ -491,31 +549,38 @@ def _thread_main_loop(goals, ignored, status):
 
         except CaughtCheatingError as e:
             ferr.critical(e) # 严重错误
+            _task_increase_error_count(status, e)
             shouldQuitImmediately = True
             raise e
 
         except SystemException as e:
             ferr.error(e)
             cout.warning("SystemException encountered")
+            _task_increase_error_count(status, e)
 
         except TipsException as e:
             ferr.error(e)
             cout.warning("TipsException encountered")
+            _task_increase_error_count(status, e)
 
         except OperationTimeoutError as e:
             ferr.error(e)
             cout.warning("OperationTimeoutError encountered")
+            _task_increase_error_count(status, e)
 
         except json.JSONDecodeError as e:
             ferr.error(e)
             cout.warning("JSONDecodeError encountered")
+            _task_increase_error_count(status, e)
 
         except KeyboardInterrupt as e:
+            _task_increase_error_count(status, e)
             shouldQuitImmediately = True
             raise e
 
         except Exception as e:
             ferr.exception(e)
+            _task_increase_error_count(status, e)
             shouldQuitImmediately = True
             raise e
 

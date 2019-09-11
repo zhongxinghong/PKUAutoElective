@@ -34,7 +34,11 @@ def task_run_loop_with_monitor():
         ignored = manager.list()
         status = manager.dict()
 
-        status["loop"] = 0
+        status["main_loop"] = 0
+        status["login_loop"] = 0
+        status["error_count"] = 0
+        status["errors"] = manager.dict()
+
 
         pList = [
             Process(target=run_main_loop, args=(signals, goals, ignored, status), name="Loop"),

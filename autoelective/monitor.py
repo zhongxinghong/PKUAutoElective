@@ -27,7 +27,7 @@ def main(signals, goals, ignored, status):
 
     @monitor.route("/", methods=["GET"])
     @monitor.route("/rules", methods=["GET"])
-    def root():
+    def get_root():
         rules = []
         for r in sorted(current_app.url_map.iter_rules(), key=lambda r: r.rule):
             line = "{method}  {rule}".format(
@@ -38,9 +38,14 @@ def main(signals, goals, ignored, status):
         return jsonify(rules)
 
 
-    @monitor.route("/loop", methods=["GET"])
-    def loop():
-        return str(status["loop"])
+    @monitor.route("/main_loop", methods=["GET"])
+    def get_main_loop():
+        return str(status["main_loop"])
+
+
+    @monitor.route("/login_loop", methods=["GET"])
+    def get_login_loop():
+        return str(status["login_loop"])
 
 
     @monitor.route("/goals", methods=["GET"])
@@ -64,10 +69,24 @@ def main(signals, goals, ignored, status):
         _ignored = [ x[0] for x in ignored ]
         return jsonify(
             {
-                "loop": status["loop"],
                 "goals": [ str(course) for course in goals ],
                 "current": [ str(course) for course in goals if course not in _ignored ],
                 "ignored": [ "%s  %s" % (course, reason) for (course, reason) in ignored ],
+                "main_loop": status["main_loop"],
+                "login_loop": status["login_loop"],
+                "error_count": status["error_count"],
+                "errors": dict(status["errors"]),
+            }
+        )
+
+    @monitor.route("/errors", methods=["GET"])
+    def get_errors():
+        return jsonify(
+            {
+                "main_loop": status["main_loop"],
+                "login_loop": status["login_loop"],
+                "error_count": status["error_count"],
+                "errors": dict(status["errors"]),
             }
         )
 

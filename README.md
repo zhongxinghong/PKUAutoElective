@@ -1,6 +1,6 @@
 # PKUAutoElective
 
-北大选课网 **补退选** 阶段自动选课小工具 v2.0.6 (2019.09.11)
+北大选课网 **补退选** 阶段自动选课小工具 v2.0.7 (2019.09.11)
 
 目前支持 `本科生（含辅双）` 和 `研究生` 选课
 
@@ -131,6 +131,9 @@ $ python3 main.py --config ./config.bob.ini --course-csv-gbk ./course.gbk.bob.cs
 
 ```
 
+由于选课网存在会话数上限，开启多进程的时候还需要调整各进程的配置文件中的 `client/elective_client_pool_size` 项，合理分配各个进程的会话数。详见 [其他配置项](#其他配置项) 。同一 IP 下所有进程的会话总数不超过 5 。建议值： 单进程 4; 两进程 2+2; 三进程 1+1+2 ......
+
+
 ### 开启监视器
 
 假如你拥有一个可以连上 `elective.pku.edu.cn` 和 `iaaa.pku.edu.cn` 的服务器，你可以在服务器上运行这个项目，并开启监听进程，然后通过访问特定地址来查看当前的运行状态。具体的配置方法如下：
@@ -162,13 +165,16 @@ server {
 
 该项目为这个监视器注册了如下路由：
 ```
-GET  /           同 /rules
-GET  /all        完整的状态
-GET  /current    当前候选的课程
-GET  /goals      输出原始的选课计划（直接从 course.csv 中读取到的课程）
-GET  /ignored    已经被忽略的课程及相应原因（已选上/无法选）
-GET  /loop       当前的运行到第几个循环，用来判断 loop 进程是否存活
-GET  /rules      输出这个路由列表
+GET  /            同 /rules
+GET  /all         完整的状态
+GET  /current     当前候选的课程
+GET  /errors      当前已捕获到的错误数
+GET  /goals       输出原始的选课计划（直接从 course.csv 中读取到的课程）
+GET  /ignored     已经被忽略的课程及相应原因（已选上/无法选）
+GET  /login_loop  login-loop 当前循环数
+GET  /main_loop   main-loop 当前循环数
+GET  /rules       输出这个路由列表
+
 ```
 
 例如，请求 `http://10.123.124.125:12345/all` 可以查看完整的状态
@@ -190,6 +196,7 @@ autoelective/
 │   │   └── SVM.model.f3.l1.c9.xz
 │   └── processor.py                          验证码图像处理相关的函数
 ├── client.py                                 客户端的基类
+├── compat.py                                 兼容性相关
 ├── config.py                                 ini 配置文件的解析类及配置的模型声明
 ├── const.py                                  文件夹路径、URL 等常数
 ├── course.py                                 课程模型

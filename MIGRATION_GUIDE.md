@@ -1,6 +1,16 @@
 Migration Guide
 ====================
 
+v2.0.6 -> v2.0.7
+------------------
+- monitor 进程中 `/loop` 路由细分为 `/main_loop` 和 `/login_loop` 两个路由
+- monitor 进程中 `/all` 路由添加了与错误捕获记录相关的键
+- monitor 进程中添加了 `/errors` 路由
+
+#### Development Related
+- 进程共享的 status 对象中的 `loop` 项细分为了 `main_loop` 和 `login_loop` 两个值，并添加了与错误捕获记录相关的键
+
+
 v2.0.4 -> v2.0.5
 ------------------
 
