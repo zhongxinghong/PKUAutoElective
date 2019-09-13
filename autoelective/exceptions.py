@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # filename: exceptions.py
-# modified: 2019-09-11
+# modified: 2019-09-13
 
 __all__ = [
 
@@ -93,7 +93,7 @@ class ServerError(AutoElectiveClientException):
             kwargs["msg"] = "%s. response status_code: %s" % (self.__class__.code, r.status_code)
         super().__init__(*args, **kwargs)
 
-class OperationFailedError(AutoElectiveException):
+class OperationFailedError(AutoElectiveClientException):
     code = 103
     desc = r"some operations failed for unknown reasons"
 
