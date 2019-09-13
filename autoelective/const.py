@@ -16,11 +16,12 @@ __all__ = [
     "CAPTCHA_CACHE_DIR",
     "REQUEST_LOG_DIR",
 
-    "COURSE_UTF8_CSV",
-    "COURSE_GBK_CSV",
-    "CONFIG_INI",
+    "DEFAULT_COURSE_UTF8_CSV",
+    "DEFAULT_COURSE_GBK_CSV",
+    "DEFAULT_CONFIG_INI",
 
     "USER_AGENT",
+    "DEFAULT_CLIENT_TIMEOUT",
 
     "IAAALinks",
     "ElectiveLinks",
@@ -35,17 +36,17 @@ SIGNAL_KILL_ALL_PROCESSES = 1
 SIGNAL_KILL_ALL_THREADS = 2
 
 
-BASE_DIR          = abspath("./")
-MODEL_DIR         = abspath("./captcha/model/")
-CACHE_DIR         = abspath("../cache/")
-CAPTCHA_CACHE_DIR = abspath("../cache/captcha/")
-LOG_DIR           = abspath("../log/")
-ERROR_LOG_DIR     = abspath("../log/error")
-REQUEST_LOG_DIR   = abspath("../log/request/")
+BASE_DIR                = abspath("./")
+MODEL_DIR               = abspath("./captcha/model/")
+CACHE_DIR               = abspath("../cache/")
+CAPTCHA_CACHE_DIR       = abspath("../cache/captcha/")
+LOG_DIR                 = abspath("../log/")
+ERROR_LOG_DIR           = abspath("../log/error")
+REQUEST_LOG_DIR         = abspath("../log/request/")
 
-COURSE_UTF8_CSV   = abspath("../course.utf-8.csv")
-COURSE_GBK_CSV    = abspath("../course.gbk.csv")
-CONFIG_INI        = abspath("../config.ini")
+DEFAULT_COURSE_UTF8_CSV = abspath("../course.utf-8.csv")
+DEFAULT_COURSE_GBK_CSV  = abspath("../course.gbk.csv")
+DEFAULT_CONFIG_INI      = abspath("../config.ini")
 
 
 mkdir(CACHE_DIR)
@@ -79,6 +80,9 @@ USER_AGENT = random.choice([
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:62.0) Gecko/20100101 Firefox/62.0",
 ])
 # USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/75.0.3770.90 Chrome/75.0.3770.90 Safari/537.36"
+
+DEFAULT_CLIENT_TIMEOUT = 10
+
 
 class IAAALinks(object):
     """

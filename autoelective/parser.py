@@ -26,10 +26,10 @@ from lxml import etree
 from .course import Course
 from .config import AutoElectiveConfig
 from .utils import read_csv
-from .const import COURSE_UTF8_CSV, COURSE_GBK_CSV
+from .const import DEFAULT_COURSE_UTF8_CSV, DEFAULT_COURSE_GBK_CSV
+from ._internal import userInfo
 
 
-_config = AutoElectiveConfig()
 _regexBzfxSida = re.compile(r'\?sida=(\S+?)&sttp=(?:bzx|bfx)')
 
 
@@ -102,8 +102,13 @@ def get_courses_with_detail(table):
 
 
 def load_course_csv():
-    coding = _config.csvCoding.lower()
-    _config.check_csv_coding(coding)
+    config = AutoElectiveConfig()
+
+    coding = config.csvCoding.lower()
+    config.check_csv_coding(coding)
+
+    COURSE_UTF8_CSV = userInfo.get("COURSE_UTF8_CSV", DEFAULT_COURSE_UTF8_CSV)
+    COURSE_GBK_CSV  = userInfo.get("COURSE_GBK_CSV", DEFAULT_COURSE_GBK_CSV)
 
     if coding == "utf-8":
         rows = read_csv(COURSE_UTF8_CSV, encoding="utf-8-sig")

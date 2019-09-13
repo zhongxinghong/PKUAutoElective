@@ -13,12 +13,6 @@ from .const import ERROR_LOG_DIR
 from ._internal import mkdir
 
 
-_config = AutoElectiveConfig()
-
-_USER_ERROR_LOG_DIR = os.path.join(ERROR_LOG_DIR, _config.get_user_subpath())
-mkdir(_USER_ERROR_LOG_DIR)
-
-
 class BaseLogger(object):
 
     LEVEL  = logging.DEBUG
@@ -90,11 +84,16 @@ class FileLogger(BaseLogger):
     LEVEL = logging.WARNING
 
     def _get_headler(self):
+        config = AutoElectiveConfig()
+
+        USER_ERROR_LOG_DIR = os.path.join(ERROR_LOG_DIR, config.get_user_subpath())
+        mkdir(USER_ERROR_LOG_DIR)
+
         filename = "%s.%s.log" % (
             self.name,
             datetime.date.strftime(datetime.date.today(), "%Y%m%d")
         )
-        file = os.path.join(_USER_ERROR_LOG_DIR, filename)
+        file = os.path.join(USER_ERROR_LOG_DIR, filename)
         headler = logging.FileHandler(file, encoding="utf-8-sig")
         headler.setLevel(self.__class__.LEVEL)
         headler.setFormatter(self.__class__.FORMAT)

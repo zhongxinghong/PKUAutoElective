@@ -8,13 +8,7 @@ __all__ = ["ElectiveClient"]
 import random
 from .client import BaseClient
 from .hook import *
-from .config import AutoElectiveConfig
-from .logger import ConsoleLogger
-from .const import USER_AGENT, ElectiveLinks
-
-
-_logger = ConsoleLogger("elective")
-_config = AutoElectiveConfig()
+from .const import USER_AGENT, DEFAULT_CLIENT_TIMEOUT, ElectiveLinks
 
 
 _hooks_check_status_code = get_hooks(
@@ -57,10 +51,8 @@ class ElectiveClient(BaseClient):
         "User-Agent": USER_AGENT,
     }
 
-    TIMEOUT = _config.electiveClientTimeout  # elective 拥挤时可能会出现网络堵塞，可能需要将时间设长
-
-    def __init__(self, id):
-        super(ElectiveClient, self).__init__()
+    def __init__(self, id, **kwargs):
+        super().__init__(**kwargs)
         self._id = id
 
     @property

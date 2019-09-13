@@ -11,14 +11,17 @@ from flask import Flask, current_app, jsonify
 from flask.logging import default_handler
 from .config import AutoElectiveConfig
 from .logger import ConsoleLogger
+from ._internal import userInfo as _userInfo
 
 
-cout = ConsoleLogger("monitor")
-ferr = ConsoleLogger("monitor.error")
-config = AutoElectiveConfig()
+def main(signals, userInfo, goals, ignored, status):
 
+    _userInfo.update(userInfo)     # setup userInfo first
+    config = AutoElectiveConfig()  # create singleton first
 
-def main(signals, goals, ignored, status):
+    cout = ConsoleLogger("monitor")
+    ferr = ConsoleLogger("monitor.error")
+
 
     monitor = Flask(__name__)
 

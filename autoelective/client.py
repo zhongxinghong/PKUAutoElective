@@ -8,21 +8,21 @@ __all__ = ["BaseClient"]
 from requests.models import Request
 from requests.sessions import Session
 from requests.cookies import extract_cookies_to_jar
+from .const import DEFAULT_CONFIG_INI
 
 
 class BaseClient(object):
 
-    TIMEOUT = 10
     HEADERS = {}
-    PROXIES = {}
 
     def __init__(self, *args, **kwargs):
         if self.__class__ is __class__:
             raise NotImplementedError
 
+        self._timeout = kwargs.get("timeout", DEFAULT_CONFIG_INI)
+
         self._session = Session()
         self._session.headers.update(self.__class__.HEADERS)
-        self._session.proxies = self.__class__.PROXIES
 
 
     def _request(self, method, url,
@@ -57,7 +57,7 @@ class BaseClient(object):
 
         # Send the request.
         send_kwargs = {
-            'timeout': timeout or self.__class__.TIMEOUT, # set default timeout
+            'timeout': timeout or self._timeout, # set default timeout
             'allow_redirects': allow_redirects,
         }
         send_kwargs.update(settings)

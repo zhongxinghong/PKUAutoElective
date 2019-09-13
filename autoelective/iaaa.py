@@ -7,13 +7,8 @@ __all__ = ["IAAAClient"]
 
 from .client import BaseClient
 from .hook import *
-from .logger import ConsoleLogger
-from .config import AutoElectiveConfig
 from .const import USER_AGENT, IAAALinks, ElectiveLinks
 
-
-_config = AutoElectiveConfig()
-_logger = ConsoleLogger("iaaa")
 
 _hooks_check_iaaa_success = get_hooks(
     debug_print_request,
@@ -31,10 +26,7 @@ class IAAAClient(BaseClient):
         "X-Requested-With": "XMLHttpRequest",
     }
 
-    TIMEOUT = _config.iaaaClientTimeout
-
-
-    def oauth_login(self, **kwargs):
+    def oauth_login(self, username, password, **kwargs):
         headers = kwargs.pop("headers", {})
         headers["Referer"] = IAAALinks.OauthHomePage + \
                             "?appID=syllabus" + \
@@ -44,8 +36,8 @@ class IAAAClient(BaseClient):
             url=IAAALinks.OauthLogin,
             data={
                 "appid": "syllabus",
-                "userName": _config.iaaaID,
-                "password": _config.iaaaPassword,
+                "userName": username,
+                "password": password,
                 "randCode": "",
                 "smsCode": "",
                 "otpCode": "",

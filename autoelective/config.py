@@ -8,21 +8,19 @@ __all__ = ["AutoElectiveConfig"]
 import os
 from configparser import RawConfigParser
 from .utils import Singleton
-from .const import CONFIG_INI
+from .const import DEFAULT_CONFIG_INI
+from ._internal import userInfo
 
 
-class BaseConfig(object, metaclass=Singleton):
+class BaseConfig(object):
 
-    CONFIG_FILE = ""
-    ALLOW_NO_VALUE = True
-
-    def __init__(self):
+    def __init__(self, config_file=None, allow_no_value=True):
         if self.__class__ is __class__:
             raise NotImplementedError
-        file = os.path.normpath(os.path.abspath(self.__class__.CONFIG_FILE))
+        file = os.path.normpath(os.path.abspath(config_file))
         if not os.path.exists(file):
             raise FileNotFoundError("config file was not found: %s" % file)
-        self._config = RawConfigParser(allow_no_value=self.__class__.ALLOW_NO_VALUE)
+        self._config = RawConfigParser(allow_no_value=allow_no_value)
         self._config.read(file, encoding="utf-8-sig") # 必须显示指明 encoding
 
     def get(self, section, key):
@@ -38,16 +36,17 @@ class BaseConfig(object, metaclass=Singleton):
         return self._config.getboolean(section, key)
 
 
-class AutoElectiveConfig(BaseConfig):
+class AutoElectiveConfig(BaseConfig, metaclass=Singleton):
 
-    CONFIG_FILE = CONFIG_INI
-
+    def __init__(self):
+        config_file = userInfo.get("CONFIG_INI", DEFAULT_CONFIG_INI)
+        allow_no_value = True
+        super().__init__(config_file, allow_no_value)
 
     # MAKR: value constraints
 
     ALLOWED_IDENTIFY = ("bzx","bfx")
     ALLOWED_CSV_CODING = ("utf-8","gbk")
-
 
     # MAKR: model
 

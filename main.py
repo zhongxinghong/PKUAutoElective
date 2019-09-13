@@ -8,18 +8,23 @@ import time
 from optparse import OptionParser
 from multiprocessing import Process, Manager, Queue
 from autoelective import __version__, __date__
+from autoelective.config import AutoElectiveConfig
+from autoelective.parser import load_course_csv
+from autoelective.logger import ConsoleLogger
+from autoelective.loop import main as run_main_loop
+from autoelective.monitor import main as run_monitor
+from autoelective.const import SIGNAL_KILL_ALL_PROCESSES
+from autoelective._internal import userInfo as _userInfo  # ugly !
 
 
-def task_run_loop():
+def task_run_loop(userInfo):
 
-    from autoelective.loop import main as run_main_loop
-    from autoelective.logger import ConsoleLogger
-    from autoelective.const import SIGNAL_KILL_ALL_PROCESSES
+    config = AutoElectiveConfig()  # create singleton first
 
     cout = ConsoleLogger("main")
     signals = Queue()
 
-    p = Process(target=run_main_loop, name="Main", args=(signals,))
+    p = Process(target=run_main_loop, name="Main", args=(signals, userInfo))
     p.daemon = True
     p.start()
 
@@ -37,13 +42,9 @@ def task_run_loop():
             break
 
 
-def task_run_loop_with_monitor():
+def task_run_loop_with_monitor(userInfo):
 
-    from autoelective.parser import load_course_csv
-    from autoelective.loop import main as run_main_loop
-    from autoelective.monitor import main as run_monitor
-    from autoelective.logger import ConsoleLogger
-    from autoelective.const import SIGNAL_KILL_ALL_PROCESSES
+    config = AutoElectiveConfig()  # create singleton first
 
     cout = ConsoleLogger("main")
     signals = Queue()
@@ -60,10 +61,11 @@ def task_run_loop_with_monitor():
         status["error_count"] = 0
         status["errors"] = manager.dict()
 
+        args = (signals, userInfo, goals, ignored, status)
 
         pList = [
-            Process(target=run_main_loop, name="Main", args=(signals, goals, ignored, status)),
-            Process(target=run_monitor, name="Monitor", args=(signals, goals, ignored, status)),
+            Process(target=run_main_loop, name="Main", args=args),
+            Process(target=run_monitor, name="Monitor", args=args),
         ]
 
         for p in pList:
@@ -127,18 +129,18 @@ def main():
     options, args = parser.parse_args()
     run_task = task_run_loop
 
-    # MARK: setup custom const
+    # MARK: setup userInfo
 
-    import autoelective.const as const
+    userInfo = {}
 
     if options.CONFIG_INI is not None:
-        const.CONFIG_INI = options.CONFIG_INI
+        userInfo["CONFIG_INI"] = options.CONFIG_INI
 
     if options.COURSE_UTF8_CSV is not None:
-        const.COURSE_UTF8_CSV = options.COURSE_UTF8_CSV
+        userInfo["COURSE_UTF8_CSV"] = options.COURSE_UTF8_CSV
 
     if options.COURSE_GBK_CSV is not None:
-        const.COURSE_GBK_CSV = options.COURSE_GBK_CSV
+        userInfo["COURSE_GBK_CSV"] = options.COURSE_GBK_CSV
 
     # MAKR: handle boolean (flag) options
 
@@ -146,7 +148,8 @@ def main():
         run_task = task_run_loop_with_monitor
 
 
-    run_task()
+    _userInfo.update(userInfo)  # setup userInfo first
+    run_task(userInfo)
 
 
 if __name__ == '__main__':
