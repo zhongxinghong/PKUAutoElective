@@ -1,7 +1,7 @@
 lxml==4.3.0
 requests==2.22.0
 simplejson==3.15.0
-Pillow==5.4.1
+Pillow==6.2.0
 numpy==1.16.0
 sklearn==0.0
 Flask==1.0.2
