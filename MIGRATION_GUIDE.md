@@ -1,7 +1,7 @@
 Migration Guide
 ====================
 
-v2.1.0 -> v3.0.1
+v2.1.0 -> v3.0.1 beta
 ------------------
 - 不再使用 `course.csv` 定义课程列表，而是合并到 `config.ini` 中，因此需要仔细查看手册的 [基本用法](/README.md#基本用法) 一节，以明确新的课程定义方法。最好对 `config.ini` 进行完全重写
 - 修改了 `config.ini` 中 `student_ID` 键名为 `student_id`

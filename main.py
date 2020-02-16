@@ -5,6 +5,7 @@
 
 from optparse import OptionParser
 from threading import Thread
+from multiprocessing import Queue
 from autoelective import __version__, __date__
 from autoelective.environ import Environ
 
@@ -67,8 +68,13 @@ def main():
         t.daemon = True
         t.start()
 
-    for t in tList:
-        t.join()
+    #
+    # Don't use join() to block the main thread, or Ctrl + C in Windows can't work.
+    #
+    # for t in tList:
+    #     t.join()
+    #
+    Queue().get()
 
 
 if __name__ == '__main__':
