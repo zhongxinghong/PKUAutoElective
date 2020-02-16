@@ -3,181 +3,174 @@
 # filename: processor.py
 # modified: 2019-09-08
 
-__all__ = [
-
-    "denoise8","denoise24","crop",
-
-    "STEPS4","STEPS8","STEPS24",
-
-    ]
-
 from PIL import Image
 
-
-_STEPS_LAYER_1 = ((1,1),(1,0),(1,-1),(0,1),(0,-1),(-1,1),(-1,0),(-1,-1))
-_STEPS_LAYER_2 = ((2,2),(2,1),(2,0),(2,-1),(2,-2),(1,2),(1,-2),(0,2),(0,-2),(-1,2),(-1,-2),(-2,2),(-2,1),(-2,0),(-2,-1),(-2,-2))
-
-STEPS4  = ((0,1),(0,-1),(1,0),(-1,0))
+_STEPS_LAYER_1 = [(1,1),(1,0),(1,-1),(0,1),(0,-1),(-1,1),(-1,0),(-1,-1)]
+_STEPS_LAYER_2 = [(2,2),(2,1),(2,0),(2,-1),(2,-2),(1,2),(1,-2),(0,2),(0,-2),
+                    (-1,2),(-1,-2),(-2,2),(-2,1),(-2,0),(-2,-1),(-2,-2)]
+STEPS4  = [(0,1),(0,-1),(1,0),(-1,0)]
 STEPS8  = _STEPS_LAYER_1
 STEPS24 = _STEPS_LAYER_1 + _STEPS_LAYER_2
 
 _PX_WHITE = 255
-_PX_Black = 0
+_PX_BLACK = 0
 
 _DEFAULT_MIN_BLOCK_SIZE = 9
 
+_BLOCKS_NUMBER_ERROR = "unexpected number of captcha blocks: %d"
 
-def _assert_image_mode_equals_to_1(img):
-    assert img.mode == "1", "image mode must be '1', not %s" % img.mode
+def _assert_image_mode_equals_to_1(im):
+    assert im.mode == "1", "image mode must be '1', not %s" % im.mode
 
 
-def _denoise(img, steps, threshold, repeat):
+def _denoise(im, steps, threshold, repeat):
     """ 去噪函数模板 """
-    _assert_image_mode_equals_to_1(img)
+    _assert_image_mode_equals_to_1(im)
+
+    width, height = im.size
+    data = im.load()
 
     for _ in range(repeat):
-        for j in range(img.width):
-            for i in range(img.height):
-                px = img.getpixel((j,i))
+        for j in range(width):
+            for i in range(height):
+                px = data[j, i]
                 if px == _PX_WHITE: # 自身白
                     continue
-                count = 0
+                cnt = 0
                 for x, y in steps:
                     j2 = j + y
                     i2 = i + x
-                    if 0 <= j2 < img.width and 0 <= i2 < img.height: # 边界内
-                        if img.getpixel((j2,i2)) == _PX_WHITE: # 周围白
-                            count += 1
+                    if 0 <= j2 < width and 0 <= i2 < height: # 边界内
+                        if data[j2, i2] == _PX_WHITE: # 周围白
+                            cnt += 1
                     else: # 边界外全部视为黑
-                        count += 1
-                if count >= threshold:
-                   img.putpixel((j,i), _PX_WHITE)
+                        cnt += 1
+                if cnt >= threshold:
+                    data[j, i] = _PX_WHITE
 
-    return img
+    return im
 
 
-def denoise8(img, steps=STEPS8, threshold=6, repeat=2):
+def denoise8(im, steps=STEPS8, threshold=6, repeat=2):
     """ 考虑外一周的降噪 """
-    return _denoise(img, steps, threshold, repeat)
+    return _denoise(im, steps, threshold, repeat)
 
 
-def denoise24(img, steps=STEPS24, threshold=20, repeat=2):
+def denoise24(im, steps=STEPS24, threshold=20, repeat=2):
     """ 考虑外两周的降噪 """
-    return _denoise(img, steps, threshold, repeat)
+    return _denoise(im, steps, threshold, repeat)
 
 
-def _search_blocks(img, steps=STEPS8, min_block_size=_DEFAULT_MIN_BLOCK_SIZE):
+def _search_blocks(im, steps=STEPS8, min_block_size=_DEFAULT_MIN_BLOCK_SIZE):
     """ 找到图像中的所有块 """
-    _assert_image_mode_equals_to_1(img)
+    _assert_image_mode_equals_to_1(im)
 
-    marked = [ [ 0 for j in range(img.width) ] for i in range(img.height) ]
+    width, height = im.size
+    data = im.load()
 
+    marked = [ [ False for j in range(width) ] for i in range(height) ]
 
-    def _is_marked(i,j):
+    def _test_and_mark(i, j):
         if marked[i][j]:
-            return True
-        else:
-            marked[i][j] = 1
             return False
+        marked[i][j] = True
+        if data[j, i] == _PX_WHITE:
+            return False
+        return True
 
-
-    def _is_white_px(i,j):
-        return img.getpixel((j,i)) == _PX_WHITE
-
-
-    def _queue_search(i,j):
-        """ 利用堆栈寻找字母 """
-        queue = [(j,i),]
+    def _search(i, j):
+        block = [(j,i),] # queue search
         head = 0
-        while head < len(queue):
-            now = queue[head]
+        while head < len(block):
+            now = block[head]
             head += 1
             for x, y in steps:
-                j2 = now[0] + y
-                i2 = now[1] + x
-                if 0 <= j2 < img.width and 0 <= i2 < img.height:
-                    if _is_marked(i2,j2) or _is_white_px(i2,j2):
-                        continue
-                    queue.append((j2,i2))
-        return queue
-
+                j = now[0] + y
+                i = now[1] + x
+                if 0 <= j < width and 0 <= i < height and _test_and_mark(i, j):
+                    block.append((j,i))
+        return block
 
     blocks = []
-    for j in range(img.width):
-        for i in range(img.height):
-            if _is_marked(i,j) or _is_white_px(i,j):
+    for j in range(width):
+        for i in range(height):
+            if not _test_and_mark(i, j):
                 continue
-            block = _queue_search(i,j)
+            block = _search(i, j)
             if len(block) >= min_block_size:
-                js = [ j for j, _ in block ]
+                js = [ _j for (_j, _) in block ]
                 blocks.append( (block, min(js), max(js)) )
 
-    assert 1 <= len(blocks) <= 4, "unexpected number of captcha blocks: %s" % len(blocks)
+    assert 1 <= len(blocks) <= 4, _BLOCKS_NUMBER_ERROR % len(blocks)
 
     return blocks
 
 
 def _split_spans(spans):
     """ 确保 spans 为 4 份 """
-    assert 1 <= len(spans) <= 4, "unexpected number of captcha blocks: %s" % len(spans)
+    assert 1 <= len(spans) <= 4, _BLOCKS_NUMBER_ERROR % len(spans)
+
+    spans.sort(key=lambda s: sum(s))
 
     if len(spans) == 1: # 四等分
-        totalSpan = spans[0]
-        delta = (totalSpan[1] - totalSpan[0]) // 4
-        spans = [
-            (totalSpan[0],         totalSpan[0]+delta  ),
-            (totalSpan[0]+delta,   totalSpan[0]+delta*2),
-            (totalSpan[1]-delta*2, totalSpan[1]-delta  ),
-            (totalSpan[1]-delta,   totalSpan[1]        ),
-        ]
+        maxs = spans[0]
+        d = (maxs[1] - maxs[0]) // 4
+        spans.remove(maxs)
+        spans.extend([
+            (maxs[0],     maxs[0]+d  ),
+            (maxs[0]+d,   maxs[0]+d*2),
+            (maxs[1]-d*2, maxs[1]-d  ),
+            (maxs[1]-d,   maxs[1]    ),
+        ])
 
     if len(spans) == 2: # 三等分较大块
-        maxSpan = max(spans, key=lambda span: span[1]-span[0])
-        idx = spans.index(maxSpan)
-        delta = (maxSpan[1] - maxSpan[0]) // 3
-        spans.remove(maxSpan)
-        spans.insert(idx,   (maxSpan[0],       maxSpan[0]+delta))
-        spans.insert(idx+1, (maxSpan[0]+delta, maxSpan[1]-delta))
-        spans.insert(idx+2, (maxSpan[1]-delta, maxSpan[1]      ))
+        maxs = max(spans, key=lambda s: s[1] - s[0])
+        d = (maxs[1] - maxs[0]) // 3
+        spans.remove(maxs)
+        spans.extend([
+            (maxs[0],   maxs[0]+d),
+            (maxs[0]+d, maxs[1]-d),
+            (maxs[1]-d, maxs[1]  ),
+        ])
 
     if len(spans) == 3: # 平均均分较大块
-        maxSpan = max(spans, key=lambda span: span[1]-span[0])
-        idx = spans.index(maxSpan)
-        mid = sum(maxSpan) // 2
-        spans.remove(maxSpan)
-        spans.insert(idx,   (maxSpan[0], mid))
-        spans.insert(idx+1, (mid, maxSpan[1]))
+        maxs = max(spans, key=lambda s: s[1] - s[0])
+        mid = sum(maxs) // 2
+        spans.remove(maxs)
+        spans.extend([
+            (maxs[0], mid    ),
+            (mid,     maxs[1]),
+        ])
 
-    if len(spans) == 4:
-        pass
+    spans.sort(key=lambda s: sum(s))
 
     return spans
 
 
-def _crop(img, spans):
+def _crop(im, spans):
     """ 分割图片 """
-    _assert_image_mode_equals_to_1(img)
-    assert len(spans) == 4, "unexpected number of captcha blocks: %s" % len(spans)
+    _assert_image_mode_equals_to_1(im)
+    assert len(spans) == 4, _BLOCKS_NUMBER_ERROR % len(spans)
+    assert im.height == 22
 
-    size = img.height # img.height == 22
+    N = im.height
     segs = []
 
-    for left, right in spans:
-        quadImg = Image.new("1", (size,size), _PX_WHITE)
-        segImg = img.crop((left, 0, right+1, size))  # left, upper, right, and lower
-        quadImg.paste(segImg, ( (size-segImg.width) // 2, 0 ))  # a 2-tuple giving the upper left corner
-        segs.append(quadImg)
+    for st, ed in spans:
+        qim = Image.new("1", (N, N), _PX_WHITE)
+        sim = im.crop((st, 0, ed+1, N))  # (left, upper, right, lower)
+        qim.paste(sim, ( (N-sim.width) // 2, 0 ))  # a 2-tuple giving the upper left corner
+        segs.append(qim)
 
     return segs
 
 
-def crop(img):
-    _assert_image_mode_equals_to_1(img)
+def crop(im):
+    _assert_image_mode_equals_to_1(im)
 
-    blocks = _search_blocks(img, steps=STEPS8)
-    spans = [i[1:] for i in blocks]
-    spans.sort(key=lambda span: sum(span))
+    blocks = _search_blocks(im, steps=STEPS8)
+    spans = [ (st, ed) for (_, st, ed) in blocks ]
     spans = _split_spans(spans)
-    segs = _crop(img, spans)
+    segs = _crop(im, spans)
 
     return segs, spans

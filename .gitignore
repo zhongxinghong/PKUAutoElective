@@ -1,10 +1,10 @@
+.vscode/
 __pycache__/
 /test
 /log
 /cache
 /config
+/bin
 *.bac
-
 config.ini
-course.gbk.csv
-course.utf-8.csv
+user_agents.user.txt

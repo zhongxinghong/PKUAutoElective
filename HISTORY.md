@@ -1,6 +1,20 @@
 Release History
 ===============
 
+v3.0.1 (2020-02-17)
+-------------------
+- 改用 pytorch 训练的 CNN 模型进行验证码识别，提高了识别的准确率
+- 优化了验证码图像处理函数的执行效率
+- 将多进程架构重写为多线程架构，监控进程现在变为和主进程下的一个子线程
+- 允许自定义 User-Agent 列表
+- 配置文件中 `student_ID` 键名改成 `student_id`
+- 不再使用 `course.csv` 文件配置课程列表，而是统一归入 `config.ini` 中
+- 允许用户自定义互斥规则，详见 [Issue #8](https://github.com/zhongxinghong/PKUAutoElective/issues/8)
+- 重新设计了 monitor 的路由
+- 现在 monitor 不会在 iaaa_loop / elective_loop 正常退出的时候自动退出
+- 修改了多处代码风格和设计细节，删除了大量冗余设计
+
+
 v2.1.1 (2019-09-13)
 -------------------
 - 修复了 `OperationFailedError` 使用错误的父类派生而导致不能正常初始化的问题

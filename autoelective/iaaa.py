@@ -3,12 +3,11 @@
 # filename: iaaa.py
 # modified: 2019-09-10
 
-__all__ = ["IAAAClient"]
-
+import random
+from urllib.parse import quote
 from .client import BaseClient
-from .hook import *
-from .const import USER_AGENT, IAAALinks, ElectiveLinks
-
+from .hook import get_hooks, debug_print_request, check_status_code, check_iaaa_success
+from .const import USER_AGENT_LIST, IAAAURL, ElectiveURL
 
 _hooks_check_iaaa_success = get_hooks(
     debug_print_request,
@@ -19,21 +18,20 @@ _hooks_check_iaaa_success = get_hooks(
 
 class IAAAClient(BaseClient):
 
-    HEADERS = {
-        "Host": IAAALinks.Host,
-        "Origin": "https://%s" % IAAALinks.Host,
-        "User-Agent": USER_AGENT,
+    default_headers = {
+        "Host": IAAAURL.Host,
+        "Origin": "https://%s" % IAAAURL.Host,
+        "User-Agent": random.choice(USER_AGENT_LIST),
         "X-Requested-With": "XMLHttpRequest",
     }
 
     def oauth_login(self, username, password, **kwargs):
         headers = kwargs.pop("headers", {})
-        headers["Referer"] = IAAALinks.OauthHomePage + \
-                            "?appID=syllabus" + \
-                            "&appName=%E5%AD%A6%E7%94%9F%E9%80%89%E8%AF%BE%E7%B3%BB%E7%BB%9F" + \
-                            "&redirectUrl=%s" % ElectiveLinks.SSOLoginRedirect
+        headers["Referer"] = "%s?appID=syllabus&appName=%s&redirectUrl=%s" % (
+            IAAAURL.OauthHomePage, quote("学生选课系统"), ElectiveURL.SSOLoginRedirect,
+        )
         r = self._post(
-            url=IAAALinks.OauthLogin,
+            url=IAAAURL.OauthLogin,
             data={
                 "appid": "syllabus",
                 "userName": username,
@@ -41,7 +39,7 @@ class IAAAClient(BaseClient):
                 "randCode": "",
                 "smsCode": "",
                 "otpCode": "",
-                "redirUrl": ElectiveLinks.SSOLoginRedirect,
+                "redirUrl": ElectiveURL.SSOLoginRedirect,
             },
             headers=headers,
             hooks=_hooks_check_iaaa_success,

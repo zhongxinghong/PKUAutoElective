@@ -8,7 +8,6 @@ __all__ = [
 "AutoElectiveException",
 
     "UserInputException",
-        "NotInCoursePlanException",
 
     "AutoElectiveClientException",
 
@@ -32,6 +31,7 @@ __all__ = [
                 "CaptchaError",
                 "NoAuthInfoError",
                 "SharedSessionError",
+                "NotAgreedToSelectionAgreement",
 
             "TipsException",
                 "ElectionSuccess",
@@ -51,11 +51,8 @@ __all__ = [
 class AutoElectiveException(Exception):
     """ Abstract Exception for AutoElective """
 
-class UserInputException(AutoElectiveException):
+class UserInputException(AutoElectiveException, ValueError):
     """ 由于用户的输入数据不当而引发的错误 """
-
-class NotInCoursePlanException(UserInputException):
-    """ csv 内指定的课程不在选课计划内 """
 
 
 class AutoElectiveClientException(AutoElectiveException):

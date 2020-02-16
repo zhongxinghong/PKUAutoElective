@@ -1,27 +1,32 @@
 # PKUAutoElective
 
-北大选课网 **补退选** 阶段自动选课小工具 v2.1.1 (2019.09.13)
+北大选课网 **补退选** 阶段自动选课小工具 v3.0.1 beta (2020.02.17)
 
 目前支持 `本科生（含辅双）` 和 `研究生` 选课
-
 
 ## 特点
 
 - 运行过程中不需要进行任何人为操作，且支持同时通过其他设备、IP 访问选课网
-- 利用机器学习模型自动识别验证码，具体参见我的项目 [PKUElectiveCaptcha](https://github.com/zhongxinghong/PKUElectiveCaptcha) ，识别率测试值为 **95.6%**
-- 具有较为完善的错误捕获机制，不容易在运行中意外退出
-- 可以选择性开启额外的监视器进程，之后可以通过端口监听当前的选课状况
+- 利用 CNN 模型自动识别验证码，具体参见我的项目 [PKUElectiveCaptcha](https://github.com/zhongxinghong/PKUElectiveCaptcha)，单个字母的识别率为 **99.88%**
+- 具有较为完善的错误捕获机制，程序鲁棒性好
+- 提供额外的监视器线程，开启后可以通过端口监听进程运行状况，为服务器上部署提供可能
 - 支持多进程下的多账号/多身份选课
+- 可以自定义额外的选课规则，目前支持互斥规则
 
 
 ## 安装
 
-该项目至少需要 Python 3 （项目开发环境为 Python 3.6.6），可以从 [Python 官网](https://www.python.org/) 下载并安装
+### Python 3
 
-例如在 Debian-Linux 下运行：
+该项目至少需要 Python 3，可以从 [Python 官网](https://www.python.org/) 下载并安装（项目开发环境为 Python 3.6.6，经测试在 Python 3.5.7 下可以正常运行）
+
+例如在 Linux 下运行：
 ```console
 $ apt-get install python3
 ```
+如果你需要在服务器上部署一个隔离的 Python 环境，你可以考虑使用 [pyenv](https://github.com/pyenv/pyenv) 和 [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv) 来安装 Python 3 及依赖包
+
+### Repo
 
 下载这个 repo 至本地。点击右上角的 `Clone or download` 即可下载
 
@@ -30,119 +35,109 @@ $ apt-get install python3
 $ git clone https://github.com/zhongxinghong/PKUAutoElective.git
 ```
 
-安装依赖包
+### Packages
+
+安装 PyTorch 外的依赖包（该示例中使用清华镜像源以加快下载速度）
 ```console
-$ pip3 install requests lxml Pillow numpy sklearn flask
+$ pip3 install requests lxml simplejson Pillow numpy flask joblib -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-可以改用清华 pip 源，加快下载速度
+安装 PyTorch，从 [PyTorch 官网](https://pytorch.org/) 中选择合适的条件获得下载命令，然后复制粘贴到命令行中运行即可下载安装。（注：本项目不需要 cuda，当然你可以安装带 gpu 优化的版本）
+
+示例选项：
+
+- `PyTorch Build`:  Stable (1.4)
+- `Your OS`: Windows
+- `Package`: Pip
+- `Language`: Python
+- `CUDA`: None
+
+复制粘贴所得命令在命令行中运行：
 ```console
-$ pip3 install requests lxml Pillow numpy sklearn flask -i https://pypi.tuna.tsinghua.edu.cn/simple
+$ pip3 install torch==1.4.0+cpu torchvision==0.5.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
-可选依赖包
-```console
-$ pip3 install simplejson
-```
+PyTorch 安装时间可能比较长，需耐心等待。
+
+如果实在无法安装，可以考虑用其他方式安装 PyTorch，详见附页 [PyTorch 安装](#PyTorch-安装)
 
 ## 基本用法
 
-1. 复制 `config.sample.ini` 文件，并将所复制得的文件重命名为 `config.ini`
-2. 根据系统类型选择合适的 `course.csv` ，同理复制 `course.*.sample.csv` 并将所得文件重命名为 `course.*.csv` ，即 `course.utf-8.csv/course.gbk.csv` ，以确保 csv 表格用软件打开后不会乱码
-    - **Linux** 若使用 `utf-8` 编码，可以用 LibreOffice 以 `UTF-8` 编码打开，若使用 `gbk` 编码，可以用 LibreOffice 以 `GB-18030` 编码打开
-    - **Windows** 使用 `gbk` 编码，可以用 MS Excel 打开
-    - **MacOS** 若使用 `gbk` 编码，可以用 MS Excel 打开，若使用 `utf-8` 编码，可以用 numbers 打开
-3. 将待选课程手动添加到选课网的 “选课计划” 中，并确保所选课程处在 **补退选页** 中 “选课计划” 列表的 **第 1 页** 。
-    - 注：为了保证刷新速度，减小服务器压力，该项目不解析位于选课计划第 1 页之后的课程
-    - 注：该项目不会事前校验待选课程的合理性，只会根据选课提交结果来判断是否提交成功，所以请自行 **确保填写的课程在有名额的时候可以被选上** ，以免浪费时间。部分常见错误可参看 [异常处理](#异常处理) 小节
-4. 将待选课程的 `课程名`, `班号`, `开课单位` 对应复制到 `course.csv` 中（本项目根据这三个字段唯一确定一个课程），每个课程占一行，高优先级的课程在上（即如果当前循环回合同时发现多个课程可选，则按照从上往下的优先级顺序依次提交选课请求）
-    - 注：考虑到 csv 格式不区分数字和字符串，该项目允许将课号 `01` 以数字 `1` 的形式直接录入
-    - 注：请确保每一行的所有字段都被填写，**信息填写不完整的行会被自动忽略，并且不会抛出异常**
-5. 配置 `config.ini`
-    - 修改 `coding/csv_coding` 项，使之与所用 `course.*.csv` 的编码匹配
-    - 填写 IAAA 认证所用的学号和密码
-    - 如果是双学位账号，则设置 `dual_degree` 项为 `true` ，同时设置双学位登录身份 `identity` ，只能填 `bzx`, `bfx` ，分别代表 `主修` 和 `辅双` ；对于非双学位账号，则设置 `dual_degree` 为 `false` ，此时登录身份项没有意义。注：以 **双学位账号的主学位身份** 进行选课仍然需要将 `dual_degree` 设为 `true` ，否则可能会遇到一直显示会话过期/尚未登录的情况。
-    - 如果待选的课程不在选课计划的第一页，并且无法将第一页的其他课程删除，你可以通过修改 `supply_cancel_page` 来指定实际刷新第几页。注：该项目一个进程只能刷新一页的选课计划，如果你需要选的课处于选课计划的不同页，则需要为每个页面分别开一个进程，详见 [高级用法](#高级用法) 中的 [多账号设置](#多账号设置) 小节
-    - 如有需要，可以修改刷新间隔项 `refresh_interval` 和 `random_deviation`，但 **不要将刷新间隔改得过短！**
-6. 进入项目根目录，利用 `python3 main.py` 命令运行主程序，即可开始自动选课。
-
-
-## 测试方法
-
-如有需要，可以进行下面的部分测试，确保程序可以在 `你的补退选页` 中正常运行：
-
-- 可以通过向课程列表中添加如下几种课程，测试程序的反应：
-
-    - 正常的可以直接补选上的课程
-    - 已经选满的课程
-    - 上课时间/考试时间冲突的课程
-    - 相同课号的课程（其他院的相同课或同一门课的不同班）
-    - 性质互斥的课程（例如：线代与高代）
-    - 跨院系选课阶段开放的其他院专业课
-
-- 可以尝试一下超学分选课会出现什么情况
-
-#### 注意：
-
-- 之后手动退选的时候不要点错课噢 QvQ
-- 研究生不能修改选课计划，请慎重测试，不要随便添加其他课程，以免造成不必要的麻烦！
+1. 复制 `config.sample.ini` 文件，所得的新文件重命名为 `config.ini`
+    - 直接复制文件，不要新建一个文件叫 `config.ini`，然后复制粘贴内容，否则可能会遇到编码问题
+2. 用文本编辑器打开 `config.ini` （建议用代码编辑器，当然记事本一类的系统工具也可以）
+3. 配置 `[user]`，详细见注释
+    - 如果是双学位账号，设置 `dual_degree` 为 `true`，同时需要设置登录身份 `identity`，非双学位账号两者均保持默认即可
+4. 在选课网上，将待选课程手动添加到选课网的 `选课计划` 中，并确保它们处在 `选课计划` 列表的 **同一页**
+    - 如果想刷的课处在不同页，可以参考 [多进程选课](#多进程选课)
+    - 该项目无法事前检查选课计划的合理性，只会根据选课的提交结果来判断某门课是否能够被选上，所以请自行 **确保填写的课程在有名额的时候可以被选上**，以免浪费时间。选课失败引发的常见错误可参见 [异常处理](#异常处理)
+5. 配置 `[course]` 定义待选课程，详细见注释
+6. 配置 `[mutex]` （如果没有需要可以跳过该步），详细见注释，更多解释见 [自定义选课规则](#自定义选课规则)
+7. 配置 `[client]`，详细见注释（如果不理解选项的含义，建议不要修改）
+    - `supply_cancel_page` 指定实际刷新第几页，确保这个值等于 (4) 中待选课程所处的页数
+    - `refresh_interval / random_deviation` 设置刷新的时间间隔（如果有需要），切记 **不要将刷新间隔改得过短**，以免对选课网服务器造成太大压力
+8. 进入项目根目录，运行 `python3 main.py`，即可开始自动选课。
 
 
 ## 高级用法
 
-自 `v2.0.0` 起，可以在程序运行时指定命令行选项。通过 `python3 main.py --help` 查看帮助。
+### 命令行参数
+
+输入 `python3 main.py -h` 查看帮助
 ```console
-$ python3 main.py --help
+$ python3 main.py -h
 
 Usage: main.py [options]
 
-PKU Auto-Elective Tool v2.0.1 (2019.09.09)
+PKU Auto-Elective Tool v3.0.1 (2020.02.17)
 
 Options:
   --version             show program's version number and exit
   -h, --help            show this help message and exit
-  --config=FILE         custom config file encoded with utf8
-  --course-csv-utf8=FILE
-                        custom course.csv file encoded with utf8
-  --course-csv-gbk=FILE
-                        custom course.csv file encoded with gbk
-  --with-monitor        run the monitor process simultaneously
-
+  -c FILE, --config=FILE
+                        custom config file encoded with utf8
+  -m, --with-monitor    run the monitor thread simultaneously
 ```
 
-通过指定命令行参数，可以开启以下的功能：
+### 多进程选课
 
-### 多账号设置
+如果你有多个账号需要选课，那么可以为每一个账号单独配置一个 `config.ini` 然后以不同的配置文件运行多个进程，即可实现多账号同时刷课
 
-可以为每一个账号单独创建一个配置文件和一个课程列表，在不同的进程中以不同的配置文件运行该项目，以实现多账号同时刷课
-
-假如为 Alice 和 Bob 同学创建了如下的文件，填写好了相应配置。假设它们与 `main.py` 处于同一目录下
+例如你为 Alice 和 Bob 同学创建了这两个文件，假设它们处在 `config/` 文件夹中（手动创建）
 ```console
 $ ls
 
-config.alice.ini  course.utf-8.alice.csv  config.bob.ini  course.gbk.bob.csv  main.py
+config  main.py
 
+$ ls config/
+
+config.alice.ini  config.bob.ini
 ```
 
-接下来分别在两个终端中运行下面两个命令，即可实现多账号刷课
+接下来在两个终端中分别运行下面两个命令，即可实现多账号刷课
 ```console
-$ python3 main.py --config ./config.alice.ini --course-csv-utf8 ./course.utf-8.alice.csv
-$ python3 main.py --config ./config.bob.ini --course-csv-gbk ./course.gbk.bob.csv
-
+$ python3 main.py -c ./config/config.alice.ini
+$ python3 main.py -c ./config/config.bob.ini
 ```
 
-由于选课网存在会话数上限，开启多进程的时候还需要调整各进程的配置文件中的 `client/elective_client_pool_size` 项，合理分配各个进程的会话数。详见 [其他配置项](#其他配置项) 。同一 IP 下所有进程的会话总数不超过 5 。建议值： 单进程 4; 两进程 2+2; 三进程 1+1+2 ......
+由于选课网单 IP 下存在会话数上限，开启多进程时还需更改 `[client]` 中的 `elective_client_pool_size` 项，合理分配各个进程的会话数。同一 IP 下所有进程的会话总数不能超过 5。建议值： 单进程 3~4; 两进程 2+2; 三进程 1+1+2 ... （保留一个会话给浏览器正常访问选课网）
 
+如果教学网的 `选课计划` 列表很长，想刷的课处在不同页，也可以通过类似的方法实现多页选课。例如：要同时刷第 1 页和第 2 页的课程，那么分别将两页的课配置成两个 `config.ini`，修改相应的 `supply_cancel_page`，然后按照上法运行即可。
+```console
+$ ls config/
 
-### 开启监视器
+config.p1.ini  config.p2.ini
+```
 
-假如你拥有一个可以连上 `elective.pku.edu.cn` 和 `iaaa.pku.edu.cn` 的服务器，你可以在服务器上运行这个项目，并开启监听进程，然后通过访问特定地址来查看当前的运行状态。具体的配置方法如下：
+### 监视器
 
-1. 在 `config.ini` 中修改需要绑定的 `host/post`
-2. 在运行时指定 `--with-monitor` 参数，即 `python3 main.py --with-monitor`
-3. 请求相应的地址即可查看运行状态。例如按照默认设置，可以请求 `http://127.0.0.1:7074`
+如果你拥有可以同时连上 `elective.pku.edu.cn` 和 `iaaa.pku.edu.cn` 的服务器，你可以在服务器上部署这个项目，并且开启监听线程，配置相应的路由，之后就可以通过外网访问服务器来查看当前运行状态。
 
-可以通过 nginx 进行反向代理，配置示例如下：
+示例：
+
+1. 配置 `[monitor]`，修改需要绑定的 `host/port`
+2. 在运行时指定额外 `-m` 参数，即 `python3 main.py -m`
+3. 利用 `nginx` 进行反向代理。假设监视器线程监听 `http://127.0.0.1:7074`，相应的配置示例如下：
 ```nginx
 # filename: nginx.autoelective.conf
 # coding: utf-8
@@ -154,125 +149,64 @@ server {
     charset      UTF-8;
 
     location / {
-
         proxy_pass  http://127.0.0.1:7074;
     }
 }
 
 ```
+在这个示例中，通过访问 `http://10.123.124.125:12345` 即可以查看运行状态
 
-在这个示例中，通过访问 `http://10.123.124.125:12345` 可以查看运行状态
 
-该项目为这个监视器注册了如下路由：
+该项目为监视器注册了如下路由：
 ```
-GET  /            同 /rules
-GET  /all         完整的状态
-GET  /current     当前候选的课程
-GET  /errors      当前已捕获到的错误数
-GET  /goals       输出原始的选课计划（直接从 course.csv 中读取到的课程）
-GET  /ignored     已经被忽略的课程及相应原因（已选上/无法选）
-GET  /login_loop  login-loop 当前循环数
-GET  /main_loop   main-loop 当前循环数
-GET  /rules       输出这个路由列表
-
+GET  /              查看该路由规则
+GET  /rules         同 /
+GET  /stat          同 /
+GET  /stat/course   查看与选课相关的状态
+GET  /stat/error    查看与错误相关的状态
+GET  /stat/loop     查看与 loop 线程相关的状态
 ```
 
-例如，请求 `http://10.123.124.125:12345/all` 可以查看完整的状态
+例如，请求 `http://10.123.124.125:12345/stat/course` 可以查看与选课相关的状态
 
 
-## 项目架构与分析
+### 自定义选课规则
 
-`autoelective/` 目录结构如下
-```console
-$ tree autoelective/
-autoelective/
-├── captcha                                   验证码相关
-│   ├── classifier.py                         模型导入与分类器类
-│   ├── feature.py                            与特征向量提取相关的函数
-│   ├── __init__.py                           验证码识别结果的模型和验证码识别类
-│   ├── model                                 可用模型
-│   │   ├── KNN.model.f5.l1.c1.bz2
-│   │   ├── RandomForest.model.f2.c6.bz2
-│   │   └── SVM.model.f3.l1.c9.xz
-│   └── processor.py                          验证码图像处理相关的函数
-├── client.py                                 客户端的基类
-├── config.py                                 ini 配置文件的解析类及配置的模型声明
-├── const.py                                  文件夹路径、URL 等常数
-├── course.py                                 课程模型
-├── elective.py                               与 elective.pku.edu.cn 的接口通信的客户端类
-├── exceptions.py                             错误类
-├── hook.py                                   对客户端请求结果进行校验的相关函数
-├── iaaa.py                                   与 iaaa.pku.edu.cn 的接口通信的客户端类
-├── __init__.py
-├── _internal.py                              内部工具函数
-├── logger.py                                 日志类声明
-├── loop.py                                   主循环进程的入口
-├── monitor.py                                监视器进程的入口
-├── parser.py                                 网页解析相关的函数
-└── utils.py                                  通用工具函数
+#### 互斥规则
 
-```
-
-## 运行流程
-
-#### loop 进程
-
-基本的思路是轮询服务器。利用 `iaaa.py` 和 `elective.py` 中定义的客户端类与服务器进行交互，请求结果借助 `parser.py` 中定义的函数进行解析，然后通过 `hook.py` 中定义的函数对结果进行校验，如果遇到错误，则抛出 `exceptions.py` 中定义的错误类，循环体外层可以捕获相应的错误。并判断应该退出还是进入下回合。
-
-采用多 elective 客户端的机制，存在着可用的 elective 客户端池 `electivePool` 和需登录/重登的 elective 客户端池 `loginPool`，在 loop 进程内有 `login-loop` 和 `main-loop` 两个子线程。
-
-##### login-loop 线程
-
-该线程维护一个登录循环：
-
-1. 监听 `loginPool` ，阻塞线程，直到出现需要登录的客户端
-2. 就尝试对该客户端进行登录
-3. 登录成功后将该客户端放入 `electivePool` ，如果登录失败，则持有该客户端进入下一回合
-4. 结束循环，不管成功失败，等待 `login_loop_interval` 时间（可在 `config.ini` 中修改）
-
-##### main-loop 线程
-
-该线程负责轮询选课网及提交选课请求，运行流程如下：
-
-1. 一次循环回合开始，打印候选课程的列表和已忽略课程的列表。
-2. 从 `electivePool` 中获取一个客户端，如果 `electivePool` 为空则阻塞线程，如果客户端尚未登录，则立刻停止当前回合，跳至步骤 (8)
-3. 获得补退选页的 HTML ，并解析 “选课计划” 列表和 “已选课程” 列表。
-4. 校验 `course.csv` 所列课程的合理性（即必须出现在 “选课计划” 或 “已选课程” 中），随后结合上一步的结果筛选出当回合有选课名额的课程。
-5. 如果发现存在可选的课程，则依次提交选课请求。在每次提交前先自动识别一张验证码。
-6. 根据请求结果调整候选课程列表，并结束当次回合。
-7. 将当前客户端放回 `electivePool` ，下回合会重新选择一个客户端
-8. 当次循环回合结束后，等待一个带随机偏量的 `refresh_interval` 时间（可在 `config.ini` 中修改该值）。
-
-#### monitor 进程
-
-在运行时指定 `--with-monitor` 参数，可以开启 `monitor` 进程。此时会在主进程中开启 `loop` 和 `monitor` 两个子进程，它们通过 `multiprocessing.Manager` 共享一部分资源（计划选课列表、已忽略课程列表等）。monitor 本质是一个 server 应用，它注册了可以用于查询共享资源状态的路由，此时通过访问 server 所绑定的地址，即可实现对 loop 状态的监听。
+假设你有多个备选方案，它们在选课规则上并不矛盾，可以同时被选上。例如你在考虑选 A 院的概率统计（B）或是 B 院开的概率统计（B），你希望在选上其中两者其一时就不再考虑选另一门，那么你可以定义这两门课为互斥的，之后在上述情境发生时，另一门课会被程序自动忽略，这样就不会发生两者同时被选上的问题。详细见 [Issue #8](https://github.com/zhongxinghong/PKUAutoElective/issues/8)
 
 
-## DEBUG 相关
+### 自定义 User-Agent 池
 
-在 `config.ini` 中提供了如下的选项：
+在 `user_agents.txt` 中提供了默认的 User-Agent 池。每次进程运行的时候，IAAA 客户端和 Elective 客户端会分别从中随机挑选一个 User-Agent，在该进程结束前将不再更换
 
-- `client/debug_print_request` 如果你需要了解每个请求的细节，可以将该项设为 `true` ，会将与请求相关的一些重要信息打印到终端。如果你需要知道其他的请求信息，可以自行修改 `hook.py` 下的 `debug_print_request` 函数
-- `client/debug_dump_request` 会用 `pickle/gzip` 记录该请求的 `Response` 对象，如果发生未知的错误，仍然可以恢复出当时的请求。如有必要可以将该项设为 `True` 以开启该功能。关于未知错误，详见 [未知错误警告](#未知错误警告) 小节。日志会被记录在 `log/request/` 目录下，可以通过 `utils.py` 中的 `pickle_gzip_load` 函数重新导入
+如果你需要自定义 User-Agent 池，你可以在根目录下创建一个 `user_agents.user.txt`（建议复制 `user_agents.txt` 并重命名之，以保证这个文件是 `utf-8` 编码），然后在其中定义自己的 User-Agent 池，程序会优先选择读入用户自定义的 User-Agent 池
 
 
-## 其他配置项
+### DEBUG 相关
 
-- `client/iaaa_client_timeout` IAAA 客户端的最长请求超时
-- `client/elective_client_timeout` Elective 客户端的最长请求超时，考虑到选课网在网络阻塞的时候响应时间会很长，这个时间默认比 IAAA 的客户端要长
-- `client/elective_client_pool_size` Elective 客户端池的最大容量。注：根据观察，每个 IP 似乎只能总共同时持有 **5 个会话**，否则会遇到 elective 登录时无限超时的问题。因此这个这个值不宜大于 5 （如果你还需要通过浏览器访问选课网，则不能大于 4）。
-- `client/login_loop_interval` IAAA 登录循环每两回合的时间间隔
+在 `config.ini` 的 `[client]` 中：
+
+- `debug_print_request` 如果设置为 `true`，会将与请求相关的重要信息打印到终端
+- `debug_dump_request` 会用 `pickle+gzip` 保存请求的 `Response` 对象，如果发生未知错误，仍然可以重新导入当时的请求。关于未知错误，详见 [未知错误警告](#未知错误警告)
+
+### 其他配置项
+
+在 `config.ini` 的 `[client]` 中：
+
+- `iaaa_client_timeout` IAAA 客户端的最长请求超时
+- `elective_client_timeout` Elective 客户端的最长请求超时
+- `login_loop_interval` IAAA 登录循环每两回合的时间间隔
 
 
 ## 异常处理
-
-各种异常类定义参看 `exceptions.py` 。每个类下均有简短的文字说明。
 
 ### 系统异常 `SystemException`
 
 对应于 `elective.pku.edu.cn` 的各种系统异常页，目前可识别：
 
-- **请不要用刷课机刷课：** 请求头未设置 `Referer` 字段，或者未事先提交验证码校验请求，就提交选课请求（比如在 Chrome 的开发者工具中，直接找到 “补选” 按钮在 DOM 中对应的链接地址并单击访问。
+- **请不要用刷课机刷课：** 请求头未设置 `Referer` 字段，或者未事先提交验证码校验请求，就提交选课请求（比如在 Chrome 的开发者工具中，直接找到 “补选” 按钮在 DOM 中对应的链接地址并单击访问）
 - **Token无效：** token 失效
 - **尚未登录或者会话超时：** cookies 中的 session 信息过期
 - **不在操作时段：** 例如，在预选阶段试图打开补退选页
@@ -298,37 +232,127 @@ autoelective/
 - **学校规定每学期只能修一门英语课：** 一学期试图选修多门英语课
 
 
-## 说明与注意事项
+## 补充说明
 
-- 为了避免访问频率过快，每一个循环回合结束后，都会暂停一下，确保每两回合间保持适当的间隔，**这个时间间隔不可以改得过短** ，否则有可能对服务器造成压力！（据说校方选课网所在的服务器为单机）
-- 不要修改 `course.csv` 的文件编码、表头字段、文件格式，不要添加或删除列，不要在空列填写任何字符，否则可能会造成 csv 文件不能正常读取。
-- 该项目通过指定 I/O 相关函数的 `encoding` 参数为 `utf-8-sig` 来兼容带 BOM 头的 UTF-8 编码的文件，包括 `config.ini`, `course.csv` ，如果仍然存在问题，请不要使用 `记事本 NotePad` 进行文件编辑，应改用更加专业的编辑工具或者代码编辑器，例如 `NotePad ++`, `Sublime Text`, `VSCode`, `PyCharm` 等，对配置文件进行修改，并以 `无 BOM 的 UTF-8` 编码保存文件。
-- 该项目针对 `预选页` 和 `补退选页` 相关的接口进行设计，`elective.py` 内定义的接口请求方法，只在 **补退选** 阶段进行过测试，不能保证适用于其他阶段。
-- 该项目针对如下的情景设计：课在有空位的时候可以选，但是当前满人无法选上，需要长时间不断刷新页面。对于有名额但是网络拥堵的情况（比如到达某个特定的选课时间节点时），用该项目选课 **不一定比手选快**，因为该项目在每次启动前会先登录一次 IAAA ，这个请求在网络堵塞的时候可能很难完成。如果你已经通过浏览器提前登入了选课网，那么手选可能是个更好的选择。
+1. 一直遇到 `[310] 您尚未登录或者会话超时,请重新登录` 错误，可能是因为您是双学位账号，但是没有在 `config.ini` 中设置 `dual_degree = true`
+2. 不要修改 `config.ini` 的编码，确保它能够以 `utf-8-sig` 编码被 Python 解析。如果遇到编码问题，请重新创建一个 `config.ini`，之后不要使用 `记事本 Notepad` 进行编辑，应改用更加专业的文本编辑工具或者代码编辑器，例如 `NotePad ++`, `Sublime Text`, `VSCode` 等，并以 `无 BOM 的 UTF-8` 编码保存文件
+3. 该项目适用于：课在有空位的时候可以选，但是当前满人无法选上，需要长时间不断刷新页面。对于有名额但是网络拥堵的情况（比如到达某个特定的选课时段节点时），程序选课 **不一定比手选快**，因为该项目每次启动前都会先登录一次 IAAA，这个请求在网络阻塞时可能很难完成，如果你已经通过浏览器提前登入了选课网，那么手动选课可能是个更好的选择。
 
 
 ## 未知错误警告
 
-- 在 2019.02.22 下午 5:00 跨院系选课名额开放的时刻，有人使用该项目试图抢 `程设3班`，终端日志表明，程序运行时发现 `程设3班` 存在空位，并成功选上，但人工登录选课网后发现，实际选上了 `程设4班（英文班）` 。使用者并未打算选修英文班，且并未将 `程设4班` 加入到 `course.csv` 中，而仅仅将其添加到教学网　“选课计划”　中，在网页中与 `程设3班` 相隔一行。从本项目的代码逻辑上我可以断定，网页的解析部分是不会出错的，对应的提交选课链接一定是 `程设3班` 的链接。可惜没有用文件日志记录网页结构，当时的请求结果已无从考证。从这一极其奇怪的现象中我猜测，北大选课网的数据库或服务器有可能存在 **线程不安全** 的设计，也有可能在高并发时会偶发 **Race condition** 漏洞。因此，我在此 **强烈建议： (1) 不要把同班号、有空位，但是不想选的课放在选课计划内； (2) 不要在学校服务器遭遇突发流量的时候拥挤选课。** 否则很有可能遭遇 **未知错误！**
-
+- 在 2019.02.22 下午 5:00 跨院系选课名额开放的时刻，有人使用该项目试图抢 `程设3班`，终端日志表明，程序运行时发现 `程设3班` 存在空位，并成功选上，但人工登录选课网后发现，实际选上了 `程设4班（英文班）` 。使用者并未打算选修英文班，且并未将 `程设4班` 加入到 `course.csv` （从 v3.0.0 起已合并入 `config.ini`） 中，而仅仅将其添加到教学网　“选课计划”　中，在网页中与 `程设3班` 相隔一行。从本项目的代码逻辑上我可以断定，网页的解析部分是不会出错的，对应的提交选课链接一定是 `程设3班` 的链接。可惜没有用文件日志记录网页结构，当时的请求结果已无从考证。从这一极其奇怪的现象中我猜测，北大选课网的数据库或服务器有可能存在 **线程不安全** 的设计，也有可能在高并发时会偶发 **Race condition** 漏洞。因此，我在此 **强烈建议： (1) 不要把同班号、有空位，但是不想选的课放在选课计划内； (2) 不要在学校服务器遭遇突发流量的时候拥挤选课。** 否则很有可能遭遇 **未知错误！**
 
 ## 历史更新信息
 
-见 [Realease History](/HISTORY.md)
-
+详见 [Realease History](/HISTORY.md)
 
 ## 版本迁移指南
 
-见 [Migration Guide](/MIGRATION_GUIDE.md)
-
+详见 [Migration Guide](/MIGRATION_GUIDE.md)
 
 ## 责任须知
 
 - 本项目仅供参考学习，你可以修改和使用这个项目，但请自行承担由此造成的一切后果
 - 严禁在公共场合扩散这个项目，以免给你我都造成不必要的麻烦
 
-
 ## 证书
 
 - PKUElectiveCaptcha [MIT LICENSE](https://github.com/zhongxinghong/PKUElectiveCaptcha/blob/master/LICENSE)
 - PKUAutoElective [MIT LICENSE](https://github.com/zhongxinghong/PKUAutoElective/blob/master/LICENSE)
+
+
+## 附录
+
+### PyTorch 安装
+
+#### 官方渠道
+
+通过 [PyTorch 官网](https://pytorch.org/) 获取下载渠道，此处不赘述
+
+#### Conda 安装
+
+不再使用 pip 而是采用 conda 安装依赖包，切换成 [清华镜像源](https://mirrors.tuna.tsinghua.edu.cn/help/anaconda/) 来提高下载速度。我未使用过 conda，所以在此不能多做介绍了，你可以在 [conda 官网](https://docs.conda.io/projects/conda/en/latest/) 上了解一下 conda 的使用方法
+
+#### 手动安装
+
+可以从清华镜像站的 [Anaconda 镜像源](https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch) 中下载相应版本的 PyTorch 后手动安装
+
+Linux 示例环境：
+
+- Debian 10 amd64
+- Python 3.6.6
+
+确保已安装 `curl` 和 `git`
+```console
+$ apt-get install curl git
+```
+
+在 `linux_64/` 下选择下载 `PyTorch 1.4.0 (cpu only)` 的版本并解压
+```console
+$ mkdir pytorch && cd pytorch
+$ curl https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/linux-64/pytorch-1.4.0-py3.6_cpu_0.tar.bz2 | tar xjv
+```
+
+复制相关文件到 Python3 第三方库的导入路径下
+```console
+$ cp -r ./lib/python*/site-packages/* $(python3 -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")
+```
+
+安装 PyTorch 的依赖库
+```console
+$ python3 -c "import json; [print(d) for d in json.load(open('./info/index.json'))['depends']]" | egrep -v "python" > requirements.txt
+$ pip3 install -r requirements.txt
+```
+
+测试 PyTorch 是否安装成功
+```console
+$ pip3 show torch
+$ python3 -c "import torch; print(torch.__version__)"
+```
+
+测试 CNN 模型是否可以正常使用
+```console
+$ git clone https://github.com/zhongxinghong/PKUAutoElective.git --depth=1
+$ cd PKUAutoElective/
+$ python3 -c \
+"import base64; from autoelective.captcha import CaptchaRecognizer;
+c = CaptchaRecognizer().recognize(base64.b64decode(
+('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHR'
+'ofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyI'
+'RwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/'
+'wAARCAAWADoDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8Q'
+'AtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2'
+'JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4e'
+'XqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ'
+'2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQo'
+'L/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUv'
+'AVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0d'
+'XZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU'
+'1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD0/VryFdJlm1caravpWnt'
+'fRuz2vnyskal5YwhP7yPJRhhYz5pUh0YVj6L8Rk1zUbCeLwb4rtGvJUj+2LpqtDLAS4iMkp'
+'58sCTzPl+6c4LDO6x4ssPtXw81y6muvO1vTtKuLS4uJD97ETeYTFHJtTzUYOFPrEzKTGoGX'
+'8PfDesal4c8OX2oeLLTV9BFkoGlPpUDKoMDRGPzck5XcyE9ThlPUigCvP4y0Wyt/Eel+GvB'
+'XieS7V57C5v9LshulnQMu5rgFnL5bdvYM3zbiCTzqeIfFWneFPiKJRp8+qXV7afZzDYW7XN'
+'4si4comVASMJtd4xITlo3CLuZ35fwH/wmqa54ltvD99odxZ2niW5kvo9QkZLq4z8pz5aFUV'
+'sZDBR8yHgqCp0PHKf2x8QND0mGf+x/E2m2jX51yKHc08KqcxQQKzNLufefLY5Co+N4Y5ANy'
+'1+Jnhy28MX2uxW2smPS0S1vrWd91xassgjRZI5JM72MjHfzuCMGbcoWpPBXiv8A4TWVF1Tw'
+'vfJJFF9ottTutL8mCaPdE67NzvtbcEYAMwPlB8g4C+aa9qt3B8KfGXhi6trS71KwvY5NW1O'
+'xlQxyzT3CyByNqkkEPEwxlSiAAgnZ6PYeIdVtoft/jifRoTauLqyhsIJI5XQQsZ32XKhyEj'
+'lDHyvmG11OTlCAdRbXmmWnhW2m0i4jhtLi3MunBopJchkaVQkOQ7AKCREuCFXaoAAxXgfxb'
+'ZW8Vqml6NcpCgjWeTVp1aUAY3ENA5BOM4LueeWbqSGXRrnXtOstO8uKWDTBNZz2k8GwWrSR'
+'5RY9xOxvKQbgm0DhXBrLv/C32jUbmf8A4QDwbdeZK7+fcT4klySdzj7K3zHqeTyep60AbEn'
+'hr+0rV4tXvr6dZN0U0QusRzw+VJFtYIiAbhIZGwAQ5ADFUQDj9N+GHg228RyXmieH83Wlah'
+'BFILnUJkSFlRZ/NjxvLtiWMbXwp2duSxRQBqW+lXPh6ZtDsLbTb681BF1Z5bzeiXN3HNF9q'
+'lf7wiLBoWjCKQrBjjAGbFz4a0Px1ollHrGmR6ilte3Mcss00sTpIjyJK0eGZtjSJxGXwF2/'
+'3AtFFAFiz+HmgW3hi68NvZxnR7h9z2cW6NSRIXVi+4yM+PLUkuQfLGAo4rUTSrx7xhe3893'
+'a/azdwMJjbvb4CBISIgoljz5hO8/3QQ/3gUUAR6RMyvq9naCOU2mp7GDxrAAJVjnflAQ5Am'
+'Yg7VLHAbnMjblFFAH/2Q==').encode('utf-8'))); print(c, c.code == 'EF8F');"
+```
+正常输出为 `Captcha('EF8F') True`
+
+清除安装包
+```console
+$ cd ../
+$ rm pytorch/ -rf
+```
