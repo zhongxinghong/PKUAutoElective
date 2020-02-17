@@ -19,10 +19,16 @@ _hooks_check_iaaa_success = get_hooks(
 class IAAAClient(BaseClient):
 
     default_headers = {
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "en-US,en;q=0.9",
         "Host": IAAAURL.Host,
         "Origin": "https://%s" % IAAAURL.Host,
         "User-Agent": random.choice(USER_AGENT_LIST),
+        "Connection": "keep-alive",
         "X-Requested-With": "XMLHttpRequest",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
     }
 
     def oauth_login(self, username, password, **kwargs):

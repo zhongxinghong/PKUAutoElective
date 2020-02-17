@@ -13,7 +13,7 @@ class Course(object):
         self._school = school
         self._status = status # (limit, current) 限选 / 已选
         self._href = href     # 选课链接
-        self._ident = (name, class_no, school)
+        self._ident = (self._name, self._class_no, self._school)
 
     @property
     def name(self):

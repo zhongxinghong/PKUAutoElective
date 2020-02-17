@@ -261,7 +261,7 @@ def run_elective_loop():
 
         ## print mutex rules
 
-        if len(mutexes) > 0:
+        if mutexes.sum() > 0:
             line = "-" * 30
             cout.info("> Mutex rules")
             cout.info(line)
@@ -349,11 +349,15 @@ def run_elective_loop():
                             continue
                         cout.info("%s is simultaneously ignored by user customed mutex rules" % mc)
                         _ignore_course(mc, "Mutex rules")
-                elif c in plans and c.is_available():
-                    tasks.append(c)
-                    cout.info("%s is AVAILABLE now !" % c)
                 else:
-                    raise UserInputException("%s is not in your course plan, please check your config." % c)
+                    for c0 in plans: # c0 has detail
+                        if c0 == c:
+                            if c0.is_available():
+                                tasks.append(c0)
+                                cout.info("%s is AVAILABLE now !" % c0)
+                            break
+                    else:
+                        raise UserInputException("%s is not in your course plan, please check your config." % c)
 
             ## elect available courses
 
@@ -384,10 +388,10 @@ def run_elective_loop():
                         raise OperationFailedError(msg="Unable to validate captcha")
 
                     if res == "2":
-                        cout.info("Validation passed!")
+                        cout.info("Validation passed")
                         break
                     elif res == "0":
-                        cout.info("Validation failed!")
+                        cout.info("Validation failed")
                         captcha.save(CAPTCHA_CACHE_DIR)
                         cout.info("Save %s to %s" % (captcha, CAPTCHA_CACHE_DIR))
                         cout.info("Try again")

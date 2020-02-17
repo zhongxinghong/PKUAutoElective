@@ -45,11 +45,15 @@ def _get_headers_with_referer(kwargs, referer=ElectiveURL.HelpController):
 class ElectiveClient(BaseClient):
 
     default_headers = {
-        # "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3",
-        # "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "en-US,en;q=0.9",
         "Host": ElectiveURL.Host,
         "Upgrade-Insecure-Requests": "1",
+        "Connection": "keep-alive",
         "User-Agent": random.choice(USER_AGENT_LIST),
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
     }
 
     def __init__(self, id, **kwargs):
@@ -68,6 +72,7 @@ class ElectiveClient(BaseClient):
     def sso_login(self, token, **kwargs):
         headers = kwargs.pop("headers", {}) # no Referer
         headers["Cookie"] = _DUMMY_COOKIES  # 必须要指定一个 Cookie 否则报 101 status_code
+        headers["Sec-Fetch-Site"] = "cross-site"
         r = self._get(
             url=ElectiveURL.SSOLogin,
             params={
@@ -83,9 +88,10 @@ class ElectiveClient(BaseClient):
     def sso_login_dual_degree(self, sida, sttp, referer, **kwargs):
         assert len(sida) == 32
         assert sttp in ("bzx", "bfx")
-        headers = _get_headers_with_referer(kwargs, referer) # referer 为之前登录的链接
+        headers = kwargs.pop("headers", {}) # no Referer
+        headers["Sec-Fetch-Site"] = "cross-site"
         r = self._get(
-            url=ElectiveURL.SSOLoginDualDegree,
+            url=ElectiveURL.SSOLogin,
             params={
                 "sida": sida,
                 "sttp": sttp,
@@ -170,6 +176,10 @@ class ElectiveClient(BaseClient):
     def get_Validate(self, captcha, **kwargs):
         """ 验证用户输入的验证码 """
         headers = _get_headers_with_referer(kwargs, ElectiveURL.SupplyCancel)
+        headers["Accept"] = "application/json, text/javascript, */*; q=0.01"
+        headers["Accept-Encoding"] = "gzip, deflate, br"
+        headers["Accept-Language"] = "en-US,en;q=0.9"
+        headers["X-Requested-With"] = "XMLHttpRequest"
         r = self._post(
             url=ElectiveURL.Validate,
             data={
@@ -185,7 +195,7 @@ class ElectiveClient(BaseClient):
         """ 补选一门课 """
         headers = _get_headers_with_referer(kwargs, ElectiveURL.SupplyCancel)
         r = self._get(
-            url="http://{host}{href}".format(host=ElectiveURL.Host, href=href),
+            url="%s://%s%s" % (ElectiveURL.Scheme, ElectiveURL.Host, href),
             headers=headers,
             hooks=_hooks_check_tips,
             **kwargs,

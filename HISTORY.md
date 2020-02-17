@@ -1,6 +1,13 @@
 Release History
 ===============
 
+v3.0.3 (2020-02-17)
+-------------------
+- 修改了 iaaa 和 elective 相关接口的请求细节，包括更换某些 url，修改 headers，修改替换 scheme 为 https 等
+- 修复了相同 Course 调用 `__eq__` 和 `__hash__` 得到不同值的 bug
+- 修复了 `assert self._status is not None` 引发的 `AssertionError`
+- 修复了 `mutexes` 在无规则时仍然 print 列表的 bug
+
 v3.0.2 beta (2020-02-17)
 -------------------
 - 修复了 Windows 下 `Ctrl + C` 失效的问题
