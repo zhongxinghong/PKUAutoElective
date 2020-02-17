@@ -44,6 +44,7 @@ __all__ = [
                 "MutuallyExclusiveCourseError",
                 "MultiEnglishCourseError",
                 "ExamTimeConflictError",
+                "QuotaLimitedError",
 
 ]
 
@@ -208,3 +209,7 @@ class MultiEnglishCourseError(TipsException):
 class ExamTimeConflictError(TipsException):
     code = 330
     desc = "考试时间冲突"
+
+class QuotaLimitedError(TipsException):
+    code = 331
+    desc = "该课程选课人数已满。"

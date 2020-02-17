@@ -11,7 +11,7 @@ class Course(object):
         self._name = name
         self._class_no = int(class_no) # 确保 01 与 1 为同班号，因为表格软件将 01 视为 1
         self._school = school
-        self._status = status # (limit, current) 限选 / 已选
+        self._status = status # (maxi, used) 限选 / 已选
         self._href = href     # 选课链接
         self._ident = (self._name, self._class_no, self._school)
 
@@ -35,10 +35,20 @@ class Course(object):
     def href(self):
         return self._href
 
+    @property
+    def max_quota(self):
+        assert self._status is not None
+        return self._status[0]
+
+    @property
+    def used_quota(self):
+        assert self._status is not None
+        return self._status[1]
+
     def is_available(self):
         assert self._status is not None
-        limit, current = self._status
-        return limit > current
+        maxi, used = self._status
+        return maxi > used
 
     def to_simplified(self):
         return Course(self._name, self._class_no, self._school)

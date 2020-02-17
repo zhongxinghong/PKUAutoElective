@@ -446,14 +446,23 @@ def run_elective_loop():
                     _ignore_course(course, "Multi English course")
                     _add_error(e)
 
-                except ElectionSuccess as e:
-                    cout.info("%s is ELECTED !" % course)
-                    # 不从此处加入 ignored ，而是在下回合根据教学网返回的实际选课结果来决定是否忽略
-
                 except ElectionFailedError as e:
                     ferr.error(e)
                     cout.warning("ElectionFailedError encountered") # 具体原因不明，且不能马上重试
                     _add_error(e)
+
+                except QuotaLimitedError as e:
+                    ferr.error(e)
+                    # 选课网可能会发回异常数据，本身名额 180/180 的课会发 180/0，这个时候选课会得到这个错误
+                    if course.used_quota == 0:
+                        cout.warning("Abnormal status of %s, a bug of 'elective.pku.edu.cn' found" % course)
+                    else:
+                        ferr.critical("Unexcepted behaviour") # 没有理由运行到这里
+                        _add_error(e)
+
+                except ElectionSuccess as e:
+                    cout.info("%s is ELECTED !" % course)
+                    # 不从此处加入 ignored ，而是在下回合根据教学网返回的实际选课结果来决定是否忽略
 
                 except Exception as e:
                     raise e  # don't increase error count here

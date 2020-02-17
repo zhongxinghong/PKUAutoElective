@@ -162,6 +162,9 @@ def check_elective_tips(r, **kwargs):
         elif tips.startswith("该课程在补退选阶段开始后的约一周开放选课"): # 这个可能需要根据当学期情况进行修改
             raise ElectionPermissionError(response=r, msg=tips)
 
+        elif tips.startswith("该课程选课人数已满"):
+            raise QuotaLimitedError(response=r, msg=tips)
+
         elif _regexElectionSuccess.search(tips):
             raise ElectionSuccess(response=r, msg=tips)
 
