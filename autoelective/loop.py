@@ -349,11 +349,13 @@ def run_elective_loop():
                             continue
                         cout.info("%s is simultaneously ignored by user customed mutex rules" % mc)
                         _ignore_course(mc, "Mutex rules")
-                elif c in plans and c.is_available():
+                elif c not in plans:
+                    raise UserInputException("%s is not in your course plan, please check your config." % c)
+                elif c.is_available():
                     tasks.append(c)
                     cout.info("%s is AVAILABLE now !" % c)
                 else:
-                    raise UserInputException("%s is not in your course plan, please check your config." % c)
+                    cout.info('%s not available now...' % c)
 
             ## elect available courses
 

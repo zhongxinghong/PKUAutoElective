@@ -36,7 +36,8 @@ class Course(object):
         return self._href
 
     def is_available(self):
-        assert self._status is not None
+        if self._status is None:
+            return False
         limit, current = self._status
         return limit > current
 
