@@ -98,6 +98,6 @@ class CaptchaRecognizer(object):
         Xlist = np.array(Xlist, dtype=np.float32).reshape(-1, 1, N, N)
         ylist = self._model(torch.from_numpy(Xlist))
 
-        code = ''.join( self._model.LABELS[ix] for ix in ylist.argmax(axis=1) )
+        code = ''.join( self._model.LABELS[ix] for ix in torch.argmax(ylist, dim=1) )
 
         return Captcha(code, oim, dim, segs, spans)
