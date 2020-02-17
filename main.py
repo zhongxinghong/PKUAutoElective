@@ -74,7 +74,10 @@ def main():
     # for t in tList:
     #     t.join()
     #
-    Queue().get()
+    try:
+        Queue().get()
+    except KeyboardInterrupt as e:
+        pass
 
 
 if __name__ == '__main__':

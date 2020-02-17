@@ -184,11 +184,11 @@ def run_elective_loop():
 
     ## load courses
 
-    cs = config.courses
+    cs = config.courses  # OrderedDict
 
     ixd = {} # { cid: cix }
 
-    for ix, (cid, c) in enumerate(sorted(cs.items())):
+    for ix, (cid, c) in enumerate(cs.items()):
         goals.append(c)
         ixd[cid] = ix
 

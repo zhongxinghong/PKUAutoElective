@@ -6,6 +6,7 @@
 import os
 import re
 from configparser import RawConfigParser, DuplicateSectionError
+from collections import OrderedDict
 from .environ import Environ
 from .course import Course
 from .utils import Singleton
@@ -54,7 +55,7 @@ class BaseConfig(object):
 
     def ns_sections(self, ns):
         ns = ns.strip()
-        ns_sects = {} # { id: str(section) }
+        ns_sects = OrderedDict() # { id: str(section) }
         for s in self._config.sections():
             mat = _reNamespacedSection.match(s)
             if mat is None:
@@ -149,7 +150,7 @@ class AutoElectiveConfig(BaseConfig, metaclass=Singleton):
 
     @property
     def courses(self):
-        cs = {}  # { id: Course }
+        cs = OrderedDict()  # { id: Course }
         rcs = {}
         for id_, s in self.ns_sections('course'):
             d = self.getdict(s, ('name','class','school'))
@@ -166,7 +167,7 @@ class AutoElectiveConfig(BaseConfig, metaclass=Singleton):
 
     @property
     def mutexes(self):
-        ms = {}  # { id: [str] }
+        ms = OrderedDict()  # { id: [str] }
         for id_, s in self.ns_sections('mutex'):
             lst = self.getlist(s, 'courses')
             ms[id_] = lst

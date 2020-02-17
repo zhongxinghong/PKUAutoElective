@@ -1,6 +1,12 @@
 Release History
 ===============
 
+v3.0.5 (2020-02-17)
+-------------------
+- 现在通过 `config.ini` 定义的课程列表可以像原来那样保持其在文件中的先后顺序，如果在同一循环中遇到同一列表中有多个课可选，将会按照从上往下的顺序依次提交
+- 现在会捕获 `Ctrl + C` 在 `main.py` 中引发的 `KeyboardInterrupt`，这样 `Ctrl + C` 将不会再打印 traceback 而是正常退出
+
+
 v3.0.4 (2020-02-17)
 -------------------
 - 修改了 `TypeError: argmax() got an unexcepted keyword argument 'axis'` 的错误
