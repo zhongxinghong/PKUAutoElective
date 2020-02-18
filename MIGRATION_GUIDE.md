@@ -1,6 +1,11 @@
 Migration Guide
 ====================
 
+v3.0.5 -> 3.0.6
+------------------
+- 修复了 [Issue #25](https://github.com/zhongxinghong/PKUAutoElective/issues/25) 所提的 bug，如果你在使用互斥规则，请你注意下 [README.md](/README.md) 中 [互斥规则](/README.md#互斥规则) 小节的更新
+
+
 v3.0.3 -> 3.0.5
 ------------------
 - 现在定义在 `config.ini` 中的课程将会像原来那样保持其在文件中的先后顺序，相应的选课优先级按从上到下的顺序从高到低排

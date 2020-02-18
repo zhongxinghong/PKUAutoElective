@@ -261,7 +261,7 @@ def run_elective_loop():
 
         ## print mutex rules
 
-        if mutexes.sum() > 0:
+        if np.any(mutexes):
             line = "-" * 30
             cout.info("> Mutex rules")
             cout.info(line)
@@ -336,7 +336,7 @@ def run_elective_loop():
 
             cout.info("Get available courses")
 
-            tasks = deque()
+            tasks = deque() # [(ix, course)]
             for ix, c in enumerate(goals):
                 if c in ignored:
                     continue
@@ -347,13 +347,13 @@ def run_elective_loop():
                         mc = goals[mix]
                         if mc in ignored:
                             continue
-                        cout.info("%s is simultaneously ignored by user customed mutex rules" % mc)
+                        cout.info("%s is simultaneously ignored by mutex rules" % mc)
                         _ignore_course(mc, "Mutex rules")
                 else:
                     for c0 in plans: # c0 has detail
                         if c0 == c:
                             if c0.is_available():
-                                tasks.append(c0)
+                                tasks.append((ix, c0))
                                 cout.info("%s is AVAILABLE now !" % c0)
                             break
                     else:
@@ -365,9 +365,27 @@ def run_elective_loop():
                 cout.info("No course available")
                 continue
 
+            elected = []  # cache elected courses dynamically from `get_ElectSupplement`
+
             while len(tasks) > 0:
 
-                course = tasks.popleft()
+                ix, course = tasks.popleft()
+
+                is_mutex = False
+
+                # dynamically filter course by mutex rules
+                for (mix, ) in np.argwhere( mutexes[ix,:] == 1 ):
+                    mc = goals[mix]
+                    if mc in elected: # ignore course in advanced
+                        is_mutex = True
+                        cout.info("%s --x-- %s" % (course, mc))
+                        cout.info("%s is ignored by mutex rules in advance" % course)
+                        _ignore_course(course, "Mutex rules")
+                        break
+
+                if is_mutex:
+                    continue
+
                 cout.info("Try to elect %s" % course)
 
                 ## validate captcha first
@@ -434,9 +452,9 @@ def run_elective_loop():
                     _ignore_course(course, "Credits limited")
                     _add_error(e)
 
-                except MutuallyExclusiveCourseError as e:
+                except MutexCourseError as e:
                     ferr.error(e)
-                    cout.warning("MutuallyExclusiveCourseError encountered")
+                    cout.warning("MutexCourseError encountered")
                     _ignore_course(course, "Mutual exclusive")
                     _add_error(e)
 
@@ -444,6 +462,12 @@ def run_elective_loop():
                     ferr.error(e)
                     cout.warning("MultiEnglishCourseError encountered")
                     _ignore_course(course, "Multi English course")
+                    _add_error(e)
+
+                except MultiPECourseError as e:
+                    ferr.error(e)
+                    cout.warning("MultiPECourseError encountered")
+                    _ignore_course(course, "Multi PE course")
                     _add_error(e)
 
                 except ElectionFailedError as e:
@@ -461,8 +485,21 @@ def run_elective_loop():
                         _add_error(e)
 
                 except ElectionSuccess as e:
+                    # 不从此处加入 ignored，而是在下回合根据教学网返回的实际选课结果来决定是否忽略
                     cout.info("%s is ELECTED !" % course)
-                    # 不从此处加入 ignored ，而是在下回合根据教学网返回的实际选课结果来决定是否忽略
+
+                    # --------------------------------------------------------------------------
+                    # Issue #25
+                    # --------------------------------------------------------------------------
+                    # 但是动态地更新 elected，如果同一回合内有多门课可以被选，并且根据 mutex rules，
+                    # 低优先级的课和刚选上的高优先级课冲突，那么轮到低优先级的课提交选课请求的时候，
+                    # 根据这个动态更新的 elected 它将会被提前地忽略（而不是留到下一循环回合的开始时才被忽略）
+                    # --------------------------------------------------------------------------
+                    r = e.response  # get response from error ... a bit ugly
+                    tables = get_tables(r._tree)
+                    # use clear() + extend() instead of op `=` to ensure `id(elected)` doesn't change
+                    elected.clear()
+                    elected.extend(get_courses(tables[1]))
 
                 except Exception as e:
                     raise e  # don't increase error count here
