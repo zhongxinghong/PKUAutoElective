@@ -165,11 +165,14 @@ def check_elective_tips(r, **kwargs):
         elif tips.startswith("该课程选课人数已满"):
             raise QuotaLimitedError(response=r, msg=tips)
 
+        elif tips.startswith("学校规定每学期只能修一门体育课"):
+            raise MultiPECourseError(response=r, msg=tips)
+
         elif _regexElectionSuccess.search(tips):
             raise ElectionSuccess(response=r, msg=tips)
 
         elif _regexMutex.search(tips):
-            raise MutuallyExclusiveCourseError(response=r, msg=tips)
+            raise MutexCourseError(response=r, msg=tips)
 
         else:
             cout.warning("Unknown tips: %s" % tips)

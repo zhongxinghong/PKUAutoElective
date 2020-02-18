@@ -41,10 +41,11 @@ __all__ = [
                 "ElectionPermissionError",
                 "ElectionFailedError",
                 "CreditsLimitedError",
-                "MutuallyExclusiveCourseError",
+                "MutexCourseError",
                 "MultiEnglishCourseError",
                 "ExamTimeConflictError",
                 "QuotaLimitedError",
+                "MultiPECourseError",
 
 ]
 
@@ -198,7 +199,7 @@ class CreditsLimitedError(TipsException):
     code = 327
     desc = "您本学期所选课程的总学分已经超过规定学分上限。"
 
-class MutuallyExclusiveCourseError(TipsException):
+class MutexCourseError(TipsException):
     code = 328
     desc = "只能选其一门。"
 
@@ -213,3 +214,7 @@ class ExamTimeConflictError(TipsException):
 class QuotaLimitedError(TipsException):
     code = 331
     desc = "该课程选课人数已满。"
+
+class MultiPECourseError(TimeoutError):
+    code = 332
+    desc = "学校规定每学期只能修一门体育课。"
