@@ -171,6 +171,11 @@ GET  /stat/loop     查看与 loop 线程相关的状态
 
 例如，请求 `http://10.123.124.125:12345/stat/course` 可以查看与选课相关的状态
 
+### 微信消息推送
+使用server酱接口达到推送消息的目的
+1. [Server酱](http://sc.ftqq.com/3.version)绑定Github账号，获取secret_key，关注微信号
+2. 在`config.ini`填写`sckey`为刚才获取的secret_key,`watch_dog`为是否开启每小时工作报告
+3. 在启动参数加入`-w`例如`python3 main.py -w`即可接受推送
 
 ### 自定义选课规则
 

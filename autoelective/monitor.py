@@ -16,7 +16,7 @@ config = AutoElectiveConfig()
 cout = ConsoleLogger("monitor")
 ferr = ConsoleLogger("monitor.error")
 
-monitor = Flask(__name__, static_folder=None) # disable static rule
+monitor = Flask(__name__, static_folder=None)  # disable static rule
 
 monitor.config["JSON_AS_ASCII"] = False
 monitor.config["JSON_SORT_KEYS"] = False
@@ -35,14 +35,14 @@ for logger in [cout, ferr]:
 def _root():
     rules = []
     for r in sorted(current_app.url_map.iter_rules(), key=lambda r: r.rule):
-        line = "{method}  {rule}".format(
-                method=','.join( m for m in r.methods if m not in ("HEAD","OPTIONS") ),
-                rule=r.rule
-            )
+        line = "{method}  {rule}".format(method=','.join(
+            m for m in r.methods if m not in ("HEAD", "OPTIONS")),
+                                         rule=r.rule)
         rules.append(line)
     return jsonify({
         "rules": rules,
     })
+
 
 @monitor.route("/stat/loop", methods=["GET"])
 def _stat_iaaa_loop():
@@ -51,7 +51,7 @@ def _stat_iaaa_loop():
     it_alive = it is not None and it.is_alive()
     et_alive = et is not None and et.is_alive()
     finished = not it_alive and not et_alive
-    error_encountered = not finished and ( not it_alive or not et_alive )
+    error_encountered = not finished and (not it_alive or not et_alive)
     return jsonify({
         "iaaa_loop": environ.iaaa_loop,
         "elective_loop": environ.elective_loop,
@@ -61,15 +61,18 @@ def _stat_iaaa_loop():
         "error_encountered": error_encountered,
     })
 
+
 @monitor.route("/stat/course", methods=["GET"])
 def _stat_course():
-    goals = environ.goals # [course]
-    ignored = environ.ignored # {course, reason}
+    goals = environ.goals  # [course]
+    ignored = environ.ignored  # {course, reason}
     return jsonify({
-        "goals": [ str(c) for c in goals ],
-        "current": [ str(c) for c in goals if c not in ignored ],
-        "ignored": { str(c): r for c, r in ignored.items() },
+        "goals": [str(c) for c in goals],
+        "current": [str(c) for c in goals if c not in ignored],
+        "ignored": {str(c): r
+                    for c, r in ignored.items()},
     })
+
 
 @monitor.route("/stat/error", methods=["GET"])
 def _stat_error():

@@ -22,11 +22,12 @@ from .iaaa import IAAAClient
 from .elective import ElectiveClient
 from .const import CAPTCHA_CACHE_DIR
 from .exceptions import *
+from .wechatpush import available_push, success_push
 
 environ = Environ()
 config = AutoElectiveConfig()
 cout = ConsoleLogger("loop")
-ferr = FileLogger("loop.error") # loop 的子日志，同步输出到 console
+ferr = FileLogger("loop.error")  # loop 的子日志，同步输出到 console
 
 username = config.iaaa_id
 password = config.iaaa_password
@@ -58,14 +59,17 @@ killedElective = ElectiveClient(-1)
 class _ElectiveNeedsLogin(Exception):
     pass
 
+
 def _get_refresh_interval():
     if deviation <= 0:
         return interval
     delta = (random.random() * 2 - 1) * deviation * interval
     return interval + delta
 
+
 def _ignore_course(course, reason):
     ignored[course.to_simplified()] = reason
+
 
 def _add_error(e):
     clz = e.__class__
@@ -92,7 +96,7 @@ def run_iaaa_loop():
 
         try:
 
-            iaaa = IAAAClient(timeout=iaaa_timeout) # not reusable
+            iaaa = IAAAClient(timeout=iaaa_timeout)  # not reusable
 
             r = iaaa.oauth_login(username, password)
 
@@ -100,7 +104,9 @@ def run_iaaa_loop():
                 token = r.json()["token"]
             except Exception as e:
                 ferr.error(e)
-                raise OperationFailedError(msg="Unable to parse IAAA token. response body: %s" % r.content)
+                raise OperationFailedError(
+                    msg="Unable to parse IAAA token. response body: %s" %
+                    r.content)
 
             elective.clear_cookies()
             r = elective.sso_login(token)
@@ -147,7 +153,7 @@ def run_iaaa_loop():
             _add_error(e)
 
         except CaughtCheatingError as e:
-            ferr.critical(e) # 严重错误
+            ferr.critical(e)  # 严重错误
             _add_error(e)
             raise e
 
@@ -186,7 +192,7 @@ def run_elective_loop():
 
     cs = config.courses  # OrderedDict
 
-    ixd = {} # { cid: cix }
+    ixd = {}  # { cid: cix }
 
     for ix, (cid, c) in enumerate(cs.items()):
         goals.append(c)
@@ -203,7 +209,8 @@ def run_elective_loop():
         ixs = []
         for cid in cids:
             if cid not in cs:
-                raise UserInputException("In mutex:%s, course %r is not defined." % (mid, cid))
+                raise UserInputException(
+                    "In mutex:%s, course %r is not defined." % (mid, cid))
             ix = ixd[cid]
             ixs.append(ix)
         for ix1, ix2 in combinations(ixs, 2):
@@ -212,7 +219,8 @@ def run_elective_loop():
     ## setup elective pool
 
     for ix in range(1, elective_pool_size + 1):
-        electivePool.put_nowait(ElectiveClient(id=ix, timeout=elective_timeout))
+        electivePool.put_nowait(ElectiveClient(id=ix,
+                                               timeout=elective_timeout))
 
     ## print header
 
@@ -238,7 +246,7 @@ def run_elective_loop():
 
         ## print current plans
 
-        current = [ c for c in goals if c not in ignored ]
+        current = [c for c in goals if c not in ignored]
         if len(current) > 0:
             line = "-" * 30
             cout.info("> Current tasks")
@@ -265,21 +273,24 @@ def run_elective_loop():
             line = "-" * 30
             cout.info("> Mutex rules")
             cout.info(line)
-            ixs = [ (ix1, ix2) for ix1, ix2 in np.argwhere( mutexes == 1 ) if ix1 < ix2 ]
+            ixs = [(ix1, ix2) for ix1, ix2 in np.argwhere(mutexes == 1)
+                   if ix1 < ix2]
             for ix, (ix1, ix2) in enumerate(ixs):
-                cout.info("%02d. %s --x-- %s" % (ix + 1, goals[ix1], goals[ix2]))
+                cout.info("%02d. %s --x-- %s" %
+                          (ix + 1, goals[ix1], goals[ix2]))
             cout.info(line)
             cout.info("")
 
         if len(current) == 0:
             cout.info("No tasks")
             cout.info("Quit elective loop")
-            reloginPool.put_nowait(killedElective) # kill signal
+            reloginPool.put_nowait(killedElective)  # kill signal
             return
 
         ## print client info
 
-        cout.info("> Current client: %s, (qsize: %s)" % (elective.id, electivePool.qsize() + 1))
+        cout.info("> Current client: %s, (qsize: %s)" %
+                  (elective.id, electivePool.qsize() + 1))
         cout.info("")
 
         try:
@@ -315,18 +326,23 @@ def run_elective_loop():
                 retry = 3
                 while True:
                     if retry == 0:
-                        raise OperationFailedError(msg="unable to get normal Supplement page %s" % page)
+                        raise OperationFailedError(
+                            msg="unable to get normal Supplement page %s" %
+                            page)
 
                     cout.info("Get Supplement page %s" % page)
-                    r = elective.get_supplement(page=page) # 双学位第二页
+                    r = elective.get_supplement(page=page)  # 双学位第二页
                     tables = get_tables(r._tree)
                     try:
                         elected = get_courses(tables[1])
                         plans = get_courses_with_detail(tables[0])
                     except IndexError as e:
                         cout.warning("IndexError encountered")
-                        cout.info("Get SupplyCancel first to prevent empty table returned")
-                        _ = elective.get_SupplyCancel() # 遇到空页面时请求一次补退选主页，之后就可以不断刷新
+                        cout.info(
+                            "Get SupplyCancel first to prevent empty table returned"
+                        )
+                        _ = elective.get_SupplyCancel(
+                        )  # 遇到空页面时请求一次补退选主页，之后就可以不断刷新
                     else:
                         break
                     finally:
@@ -336,28 +352,33 @@ def run_elective_loop():
 
             cout.info("Get available courses")
 
-            tasks = deque() # [(ix, course)]
+            tasks = deque()  # [(ix, course)]
             for ix, c in enumerate(goals):
                 if c in ignored:
                     continue
                 elif c in elected:
                     cout.info("%s is elected, ignored" % c)
+                    success_push(c)
                     _ignore_course(c, "Elected")
-                    for (mix, ) in np.argwhere( mutexes[ix,:] == 1 ):
+                    for (mix, ) in np.argwhere(mutexes[ix, :] == 1):
                         mc = goals[mix]
                         if mc in ignored:
                             continue
-                        cout.info("%s is simultaneously ignored by mutex rules" % mc)
+                        cout.info(
+                            "%s is simultaneously ignored by mutex rules" % mc)
                         _ignore_course(mc, "Mutex rules")
                 else:
-                    for c0 in plans: # c0 has detail
+                    for c0 in plans:  # c0 has detail
                         if c0 == c:
                             if c0.is_available():
                                 tasks.append((ix, c0))
                                 cout.info("%s is AVAILABLE now !" % c0)
+                                available_push(c0)
                             break
                     else:
-                        raise UserInputException("%s is not in your course plan, please check your config." % c)
+                        raise UserInputException(
+                            "%s is not in your course plan, please check your config."
+                            % c)
 
             ## elect available courses
 
@@ -365,7 +386,8 @@ def run_elective_loop():
                 cout.info("No course available")
                 continue
 
-            elected = []  # cache elected courses dynamically from `get_ElectSupplement`
+            elected = [
+            ]  # cache elected courses dynamically from `get_ElectSupplement`
 
             while len(tasks) > 0:
 
@@ -374,12 +396,13 @@ def run_elective_loop():
                 is_mutex = False
 
                 # dynamically filter course by mutex rules
-                for (mix, ) in np.argwhere( mutexes[ix,:] == 1 ):
+                for (mix, ) in np.argwhere(mutexes[ix, :] == 1):
                     mc = goals[mix]
-                    if mc in elected: # ignore course in advanced
+                    if mc in elected:  # ignore course in advanced
                         is_mutex = True
                         cout.info("%s --x-- %s" % (course, mc))
-                        cout.info("%s is ignored by mutex rules in advance" % course)
+                        cout.info("%s is ignored by mutex rules in advance" %
+                                  course)
                         _ignore_course(course, "Mutex rules")
                         break
 
@@ -403,7 +426,8 @@ def run_elective_loop():
                         res = r.json()["valid"]  # 可能会返回一个错误网页 ...
                     except Exception as e:
                         ferr.error(e)
-                        raise OperationFailedError(msg="Unable to validate captcha")
+                        raise OperationFailedError(
+                            msg="Unable to validate captcha")
 
                     if res == "2":
                         cout.info("Validation passed")
@@ -411,7 +435,8 @@ def run_elective_loop():
                     elif res == "0":
                         cout.info("Validation failed")
                         captcha.save(CAPTCHA_CACHE_DIR)
-                        cout.info("Save %s to %s" % (captcha, CAPTCHA_CACHE_DIR))
+                        cout.info("Save %s to %s" %
+                                  (captcha, CAPTCHA_CACHE_DIR))
                         cout.info("Try again")
                     else:
                         cout.warning("Unknown validation result: %s" % res)
@@ -472,16 +497,19 @@ def run_elective_loop():
 
                 except ElectionFailedError as e:
                     ferr.error(e)
-                    cout.warning("ElectionFailedError encountered") # 具体原因不明，且不能马上重试
+                    cout.warning(
+                        "ElectionFailedError encountered")  # 具体原因不明，且不能马上重试
                     _add_error(e)
 
                 except QuotaLimitedError as e:
                     ferr.error(e)
                     # 选课网可能会发回异常数据，本身名额 180/180 的课会发 180/0，这个时候选课会得到这个错误
                     if course.used_quota == 0:
-                        cout.warning("Abnormal status of %s, a bug of 'elective.pku.edu.cn' found" % course)
+                        cout.warning(
+                            "Abnormal status of %s, a bug of 'elective.pku.edu.cn' found"
+                            % course)
                     else:
-                        ferr.critical("Unexcepted behaviour") # 没有理由运行到这里
+                        ferr.critical("Unexcepted behaviour")  # 没有理由运行到这里
                         _add_error(e)
 
                 except ElectionSuccess as e:
@@ -535,7 +563,8 @@ def run_elective_loop():
             elective = None
             noWait = True
 
-        except (SessionExpiredError, InvalidTokenError, NoAuthInfoError, SharedSessionError) as e:
+        except (SessionExpiredError, InvalidTokenError, NoAuthInfoError,
+                SharedSessionError) as e:
             ferr.error(e)
             _add_error(e)
             cout.info("client: %s needs relogin" % elective.id)
@@ -544,7 +573,7 @@ def run_elective_loop():
             noWait = True
 
         except CaughtCheatingError as e:
-            ferr.critical(e) # critical error !
+            ferr.critical(e)  # critical error !
             _add_error(e)
             raise e
 
@@ -578,18 +607,20 @@ def run_elective_loop():
 
         finally:
 
-            if elective is not None: # change elective client
+            if elective is not None:  # change elective client
                 electivePool.put_nowait(elective)
                 elective = None
 
             if noWait:
                 cout.info("")
-                cout.info("======== END Loop %d ========" % environ.elective_loop)
+                cout.info("======== END Loop %d ========" %
+                          environ.elective_loop)
                 cout.info("")
             else:
                 t = _get_refresh_interval()
                 cout.info("")
-                cout.info("======== END Loop %d ========" % environ.elective_loop)
+                cout.info("======== END Loop %d ========" %
+                          environ.elective_loop)
                 cout.info("Main loop sleep %s s" % t)
                 cout.info("")
                 time.sleep(t)

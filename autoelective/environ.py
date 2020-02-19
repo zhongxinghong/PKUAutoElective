@@ -7,6 +7,7 @@ from .utils import Singleton
 from collections import defaultdict
 import numpy as np
 
+
 class Environ(object, metaclass=Singleton):
 
     __slots__ = [
@@ -21,17 +22,22 @@ class Environ(object, metaclass=Singleton):
         'goals',
         'mutexes',
         'ignored',
+        'wechat_push',
+        'wechat_push_thread',
     ]
 
     def __init__(self):
         self.config_ini = None
         self.with_monitor = None
+        self.wechat_push = None
         self.iaaa_loop = 0
         self.elective_loop = 0
         self.errors = defaultdict(lambda: 0)
         self.iaaa_loop_thread = None
         self.elective_loop_thread = None
         self.monitor_thread = None
+        self.wechat_push_thread = None
         self.goals = []
-        self.mutexes = np.zeros(0, dtype=np.uint8) # unit8 [N][N]; N = len(goals);
-        self.ignored = {} # {course, reason}
+        self.mutexes = np.zeros(
+            0, dtype=np.uint8)  # unit8 [N][N]; N = len(goals);
+        self.ignored = {}  # {course, reason}

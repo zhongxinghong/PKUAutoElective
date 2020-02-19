@@ -8,14 +8,17 @@ from threading import Thread
 from multiprocessing import Queue
 from autoelective import __version__, __date__
 from autoelective.environ import Environ
+from autoelective.config import AutoElectiveConfig
 
 environ = Environ()
+config = AutoElectiveConfig()
 
 
 def main():
 
     parser = OptionParser(
-        description='PKU Auto-Elective Tool v%s (%s)' % (__version__, __date__),
+        description='PKU Auto-Elective Tool v%s (%s)' %
+        (__version__, __date__),
         version=__version__,
     )
 
@@ -40,14 +43,27 @@ def main():
         help='run the monitor thread simultaneously',
     )
 
+    ## add wechat message push
+
+    parser.add_option(
+        '-w',
+        '--wechat-push',
+        dest='wechat_push',
+        action='store_true',
+        default=False,
+        help='enable message push on WeChat',
+    )
+
     options, args = parser.parse_args()
 
     environ.config_ini = options.config_ini
     environ.with_monitor = options.with_monitor
+    environ.wechat_push = options.wechat_push
 
     # import here to ensure the singleton `config` will be init later than parse_args()
     from autoelective.loop import run_iaaa_loop, run_elective_loop
     from autoelective.monitor import run_monitor
+    from autoelective.wechatpush import run_wechat_push_watchdog
 
     tList = []
 
@@ -62,6 +78,11 @@ def main():
     if options.with_monitor:
         t = Thread(target=run_monitor, name="Monitor")
         environ.monitor_thread = t
+        tList.append(t)
+
+    if config.wechat_push_watchdog and options.wechat_push:
+        t = Thread(target=run_wechat_push_watchdog, name="WechatPushWatchdog")
+        environ.wechat_push_thread = t
         tList.append(t)
 
     for t in tList:
