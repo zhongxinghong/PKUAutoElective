@@ -112,6 +112,7 @@ def msg_push(params):
 def run_wechat_push_watchdog():
     p = 0
     # log watchdog
+    log_push('成功启动')
     while True:
         if error_encountered:
             log_push('服务出错')
