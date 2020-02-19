@@ -32,6 +32,13 @@ msg = """
 %s
 """
 
+it = environ.iaaa_loop_thread
+et = environ.elective_loop_thread
+it_alive = it is not None and it.is_alive()
+et_alive = et is not None and et.is_alive()
+finished = not it_alive and not et_alive
+error_encountered = not finished and (not it_alive or not et_alive)
+
 
 def find_course(string):
     # 匹配解析课程
@@ -51,12 +58,6 @@ def message_formatter():
             currents += ('- ' + find_course(c)[0] + '  \n')
     for c, r in environ.ignored.items():
         ignored += ('- ' + find_course(c)[0] + ':' + r + '  \n')
-    it = environ.iaaa_loop_thread
-    et = environ.elective_loop_thread
-    it_alive = it is not None and it.is_alive()
-    et_alive = et is not None and et.is_alive()
-    finished = not it_alive and not et_alive
-    error_encountered = not finished and (not it_alive or not et_alive)
     status += '- 身份认证循环数:' + str(environ.iaaa_loop) + '  \n'
     status += '- 选课循环次数:' + str(environ.elective_loop) + '  \n'
     status += '- 身份认证运行:' + str(it_alive) + '  \n'
@@ -69,9 +70,9 @@ def message_formatter():
     return msg % (goal, currents, ignored, status, error)
 
 
-def log_push():
+def log_push(title="选课助手运行报告"):
     # pushlog
-    params = {"text": "选课助手运行报告", "desp": message_formatter()}
+    params = {"text": title, "desp": message_formatter()}
     return msg_push(params)
 
 
@@ -109,7 +110,15 @@ def msg_push(params):
 
 
 def run_wechat_push_watchdog():
+    p = 0
     # log watchdog
     while True:
-        log_push()
-        time.sleep(3600)
+        if error_encountered:
+            log_push('服务出错')
+        else:
+            continue
+        p += 1
+        if p == 180:
+            log_push()
+            p = 0
+        time.sleep(20)
