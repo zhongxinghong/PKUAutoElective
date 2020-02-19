@@ -32,13 +32,6 @@ msg = """
 %s
 """
 
-it = environ.iaaa_loop_thread
-et = environ.elective_loop_thread
-it_alive = it is not None and it.is_alive()
-et_alive = et is not None and et.is_alive()
-finished = not it_alive and not et_alive
-error_encountered = not finished and (not it_alive or not et_alive)
-
 
 def find_course(string):
     # 匹配解析课程
@@ -48,6 +41,12 @@ def find_course(string):
 
 def message_formatter():
     # 格式化消息
+    it = environ.iaaa_loop_thread
+    et = environ.elective_loop_thread
+    it_alive = it is not None and it.is_alive()
+    et_alive = et is not None and et.is_alive()
+    finished = not it_alive and not et_alive
+    error_encountered = not finished and (not it_alive or not et_alive)
     goal = ''
     currents = ''
     ignored = ''
@@ -65,7 +64,7 @@ def message_formatter():
     status += '- 已结束:' + str(finished) + '  \n'
     status += '- 运行错误:' + str(error_encountered) + '  \n'
     error = ''
-    if error_encountered is True:
+    if error_encountered:
         error = '--------------------\n## 错误报告  \n%s' % str(environ.errors)
     return msg % (goal, currents, ignored, status, error)
 
@@ -114,12 +113,17 @@ def run_wechat_push_watchdog():
     # log watchdog
     log_push('成功启动')
     while True:
-        if error_encountered:
-            log_push('服务出错')
-        else:
-            continue
+        it = environ.iaaa_loop_thread
+        et = environ.elective_loop_thread
+        it_alive = it is not None and it.is_alive()
+        et_alive = et is not None and et.is_alive()
+        finished = not it_alive and not et_alive
+        error_encountered = not finished and (not it_alive or not et_alive)
+        time.sleep(1)
         p += 1
-        if p == 180:
+        if p == 3600:
             log_push()
+            print(2)
             p = 0
-        time.sleep(20)
+        if error_encountered:
+            log_push('错误报告')
