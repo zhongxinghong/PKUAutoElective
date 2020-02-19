@@ -3,36 +3,29 @@
 # filename: client.py
 # modified: 2019-09-09
 
-__all__ = ["BaseClient"]
-
 from requests.models import Request
 from requests.sessions import Session
 from requests.cookies import extract_cookies_to_jar
-from .const import DEFAULT_CONFIG_INI
-
 
 class BaseClient(object):
 
-    HEADERS = {}
+    default_headers = {}
+    default_client_timeout = 10
 
     def __init__(self, *args, **kwargs):
         if self.__class__ is __class__:
             raise NotImplementedError
-
-        self._timeout = kwargs.get("timeout", DEFAULT_CONFIG_INI)
-
+        self._timeout = kwargs.get("timeout", self.__class__.default_client_timeout)
         self._session = Session()
-        self._session.headers.update(self.__class__.HEADERS)
-
+        self._session.headers.update(self.__class__.default_headers)
 
     def _request(self, method, url,
             params=None, data=None, headers=None, cookies=None, files=None,
             auth=None, timeout=None, allow_redirects=True, proxies=None,
             hooks=None, stream=None, verify=None, cert=None, json=None):
-        """
-        Extended from requests/sessions.py  for '_client' kwargs
 
-        """
+        # Extended from requests/sessions.py  for '_client' kwargs
+
         req = Request(
             method=method.upper(),
             url=url,
@@ -65,13 +58,11 @@ class BaseClient(object):
 
         return resp
 
-
     def _get(self, url, params=None, **kwargs):
         return self._request('GET', url,  params=params, **kwargs)
 
     def _post(self, url, data=None, json=None, **kwargs):
         return self._request('POST', url, data=data, json=json, **kwargs)
-
 
     def persist_cookies(self, r):
         """
@@ -98,8 +89,3 @@ class BaseClient(object):
 
     def clear_cookies(self):
         self._session.cookies.clear()
-
-    # def extend_cookies_from(self, other):
-    #     assert isinstance(other, BaseClient)
-    #     self._session.cookies.update(other._session.cookies)
-

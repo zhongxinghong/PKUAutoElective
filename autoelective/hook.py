@@ -3,25 +3,6 @@
 # filename: hook.py
 # modified: 2019-09-11
 
-__all__ = [
-
-    "get_hooks",
-    'merge_hooks',
-
-    "with_etree",
-    "del_etree",
-
-    "check_status_code",
-
-    "check_iaaa_success",
-    "check_elective_title",
-    "check_elective_tips",
-
-    "debug_print_request",
-    "debug_dump_request",
-
-    ]
-
 import os
 import re
 import time
@@ -34,11 +15,10 @@ from .const import REQUEST_LOG_DIR
 from .exceptions import *
 from ._internal import mkdir
 
+cout = ConsoleLogger("hook")
+config = AutoElectiveConfig()
 
-_logger = ConsoleLogger("hook")
-_config = AutoElectiveConfig()
-
-_USER_REQUEST_LOG_DIR = os.path.join(REQUEST_LOG_DIR, _config.get_user_subpath())
+_USER_REQUEST_LOG_DIR = os.path.join(REQUEST_LOG_DIR, config.get_user_subpath())
 mkdir(_USER_REQUEST_LOG_DIR)
 
 # __regex_errInfo        = re.compile(r"<strong>出错提示:</strong>(\S+?)<br>", re.S)
@@ -52,7 +32,6 @@ _DUMMY_HOOK = {"response": []}
 def get_hooks(*fn):
     return {"response": fn}
 
-
 def merge_hooks(*hooklike):
     funcs = []
     for hook in hooklike:
@@ -64,10 +43,8 @@ def merge_hooks(*hooklike):
             raise TypeError(hook)
     return get_hooks(*funcs)
 
-
 def with_etree(r, **kwargs):
     r._tree = get_tree_from_response(r)
-
 
 def del_etree(r, **kwargs):
     del r._tree
@@ -185,14 +162,20 @@ def check_elective_tips(r, **kwargs):
         elif tips.startswith("该课程在补退选阶段开始后的约一周开放选课"): # 这个可能需要根据当学期情况进行修改
             raise ElectionPermissionError(response=r, msg=tips)
 
+        elif tips.startswith("该课程选课人数已满"):
+            raise QuotaLimitedError(response=r, msg=tips)
+
+        elif tips.startswith("学校规定每学期只能修一门体育课"):
+            raise MultiPECourseError(response=r, msg=tips)
+
         elif _regexElectionSuccess.search(tips):
             raise ElectionSuccess(response=r, msg=tips)
 
         elif _regexMutex.search(tips):
-            raise MutuallyExclusiveCourseError(response=r, msg=tips)
+            raise MutexCourseError(response=r, msg=tips)
 
         else:
-            _logger.warning("Unknown tips: %s" % tips)
+            cout.warning("Unknown tips: %s" % tips)
             # raise TipsException(response=r, msg=tips)
 
     except Exception as e:
@@ -202,22 +185,22 @@ def check_elective_tips(r, **kwargs):
 
 
 def debug_print_request(r, **kwargs):
-    if not _config.isDebugPrintRequest:
+    if not config.is_debug_print_request:
         return
-    _logger.debug("> %s  %s" % (r.request.method, r.url))
-    _logger.debug("> Headers:")
+    cout.debug("> %s  %s" % (r.request.method, r.url))
+    cout.debug("> Headers:")
     for k, v in r.request.headers.items():
-        _logger.debug("%s: %s" % (k, v))
-    _logger.debug("> Body:")
-    _logger.debug(r.request.body)
-    _logger.debug("> Response Headers:")
+        cout.debug("%s: %s" % (k, v))
+    cout.debug("> Body:")
+    cout.debug(r.request.body)
+    cout.debug("> Response Headers:")
     for k, v in r.headers.items():
-        _logger.debug("%s: %s" % (k, v))
-    _logger.debug("")
+        cout.debug("%s: %s" % (k, v))
+    cout.debug("")
 
 
 def debug_dump_request(r, **kwargs):
-    if not _config.isDebugDumpRequest:
+    if not config.is_debug_dump_request:
         return
 
     if "_client" in r.request.__dict__:  # _client will be set by BaseClient
@@ -232,7 +215,7 @@ def debug_dump_request(r, **kwargs):
     filename = "%s.%s.gz" % (timestamp, basename)  # put timestamp first
     file = os.path.normpath(os.path.abspath(os.path.join(_USER_REQUEST_LOG_DIR, filename)))
 
-    _logger.debug("Dump request %s to %s" % (r.url, file))
+    cout.debug("Dump request %s to %s" % (r.url, file))
     pickle_gzip_dump(r, file)
 
     # restore objects defined by autoelective package

@@ -3,38 +3,40 @@
 # filename: logger.py
 # modified: 2019-09-09
 
-__all__ = ["ConsoleLogger","FileLogger"]
-
 import os
-import datetime
 import logging
+from logging import StreamHandler
+from logging.handlers import TimedRotatingFileHandler
 from .config import AutoElectiveConfig
 from .const import ERROR_LOG_DIR
 from ._internal import mkdir
 
+config = AutoElectiveConfig()
+
+_USER_ERROR_LOG_DIR = os.path.join(ERROR_LOG_DIR, config.get_user_subpath())
+mkdir(_USER_ERROR_LOG_DIR)
+
 
 class BaseLogger(object):
 
-    LEVEL  = logging.DEBUG
-    FORMAT = logging.Formatter("[%(levelname)s] %(name)s, %(asctime)s, %(message)s", "%H:%M:%S")
+    default_level = logging.DEBUG
+    default_format = logging.Formatter("[%(levelname)s] %(name)s, %(asctime)s, %(message)s", "%H:%M:%S")
 
-    def __init__(self, name):
+    def __init__(self, name, level=None, format=None):
         if self.__class__ is __class__:
             raise NotImplementedError
         self._name = name
-        self._logger = logging.getLogger(name)
-        self._logger.setLevel(self.__class__.LEVEL)
-        self._logger.addHandler(self._get_headler())
-
-    @property
-    def name(self):
-        return self._name
+        self._level = level if level is not None else self.__class__.default_level
+        self._format = format if format is not None else self.__class__.default_format
+        self._logger = logging.getLogger(self._name)
+        self._logger.setLevel(self._level)
+        self._logger.addHandler(self._get_handler())
 
     @property
     def handlers(self):
         return self._logger.handlers
 
-    def _get_headler(self):
+    def _get_handler(self):
         raise NotImplementedError
 
     def log(self, level, msg, *args, **kwargs):
@@ -69,32 +71,23 @@ class BaseLogger(object):
 class ConsoleLogger(BaseLogger):
     """ 控制台日志输出类 """
 
-    LEVEL = logging.DEBUG
+    default_level = logging.DEBUG
 
-    def _get_headler(self):
-        headler = logging.StreamHandler()
-        headler.setLevel(self.__class__.LEVEL)
-        headler.setFormatter(self.__class__.FORMAT)
-        return headler
+    def _get_handler(self):
+        handler = logging.StreamHandler()
+        handler.setLevel(self._level)
+        handler.setFormatter(self._format)
+        return handler
 
 
 class FileLogger(BaseLogger):
     """ 文件日志输出类 """
 
-    LEVEL = logging.WARNING
+    default_level = logging.WARNING
 
-    def _get_headler(self):
-        config = AutoElectiveConfig()
-
-        USER_ERROR_LOG_DIR = os.path.join(ERROR_LOG_DIR, config.get_user_subpath())
-        mkdir(USER_ERROR_LOG_DIR)
-
-        filename = "%s.%s.log" % (
-            self.name,
-            datetime.date.strftime(datetime.date.today(), "%Y%m%d")
-        )
-        file = os.path.join(USER_ERROR_LOG_DIR, filename)
-        headler = logging.FileHandler(file, encoding="utf-8-sig")
-        headler.setLevel(self.__class__.LEVEL)
-        headler.setFormatter(self.__class__.FORMAT)
-        return headler
+    def _get_handler(self):
+        file = os.path.join(_USER_ERROR_LOG_DIR, "%s.log" % self._name)
+        handler = TimedRotatingFileHandler(file, when='d', interval=1, encoding="utf-8-sig")
+        handler.setLevel(self._level)
+        handler.setFormatter(self._format)
+        return handler

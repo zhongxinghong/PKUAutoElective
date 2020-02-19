@@ -3,25 +3,32 @@
 # filename: config.py
 # modified: 2019-09-10
 
-__all__ = ["AutoElectiveConfig"]
-
 import os
-from configparser import RawConfigParser
+import re
+from configparser import RawConfigParser, DuplicateSectionError
+from collections import OrderedDict
+from .environ import Environ
+from .course import Course
 from .utils import Singleton
 from .const import DEFAULT_CONFIG_INI
-from ._internal import userInfo
+from .exceptions import UserInputException
+
+_reNamespacedSection = re.compile(r'^\s*(?P<ns>[^:]+?)\s*:\s*(?P<id>[^,]+?)\s*$')
+_reCommaSep = re.compile(r'\s*,\s*')
+
+environ = Environ()
 
 
 class BaseConfig(object):
 
-    def __init__(self, config_file=None, allow_no_value=True):
+    def __init__(self, config_file=None):
         if self.__class__ is __class__:
             raise NotImplementedError
         file = os.path.normpath(os.path.abspath(config_file))
         if not os.path.exists(file):
-            raise FileNotFoundError("config file was not found: %s" % file)
-        self._config = RawConfigParser(allow_no_value=allow_no_value)
-        self._config.read(file, encoding="utf-8-sig") # 必须显示指明 encoding
+            raise FileNotFoundError("Config file was not found: %s" % file)
+        self._config = RawConfigParser()
+        self._config.read(file, encoding="utf-8-sig")
 
     def get(self, section, key):
         return self._config.get(section, key)
@@ -35,99 +42,138 @@ class BaseConfig(object):
     def getboolean(self, section, key):
         return self._config.getboolean(section, key)
 
+    def getdict(self, section, options):
+        assert isinstance(options, (list, tuple, set))
+        d = dict(self._config.items(section))
+        if not all( k in d for k in options ):
+            raise UserInputException("Incomplete course in section %r, %s must all exist." % (section, options))
+        return d
+
+    def getlist(self, section, option, *args, **kwargs):
+        v = self.get(section, option, *args, **kwargs)
+        return _reCommaSep.split(v)
+
+    def ns_sections(self, ns):
+        ns = ns.strip()
+        ns_sects = OrderedDict() # { id: str(section) }
+        for s in self._config.sections():
+            mat = _reNamespacedSection.match(s)
+            if mat is None:
+                continue
+            if mat.group('ns') != ns:
+                continue
+            id_ = mat.group('id')
+            if id_ in ns_sects:
+                raise DuplicateSectionError("%s:%s" % (ns, id_))
+            ns_sects[id_] = s
+        return [ (id_, s) for id_, s in ns_sects.items() ] # [ (id, str(section)) ]
+
 
 class AutoElectiveConfig(BaseConfig, metaclass=Singleton):
 
     def __init__(self):
-        config_file = userInfo.get("CONFIG_INI", DEFAULT_CONFIG_INI)
-        allow_no_value = True
-        super().__init__(config_file, allow_no_value)
+        super().__init__(environ.config_ini or DEFAULT_CONFIG_INI)
 
-    # MAKR: value constraints
+    ## Constraints
 
     ALLOWED_IDENTIFY = ("bzx","bfx")
-    ALLOWED_CSV_CODING = ("utf-8","gbk")
 
-    # MAKR: model
-
-    # [coding]
-
-    @property
-    def csvCoding(self):
-        return self.get("coding", "csv_coding")
+    ## Model
 
     # [user]
 
     @property
-    def iaaaID(self):
-        return self.get("user", "student_ID")
+    def iaaa_id(self):
+        return self.get("user", "student_id")
 
     @property
-    def iaaaPassword(self):
+    def iaaa_password(self):
         return self.get("user", "password")
 
     @property
-    def isDualDegree(self):
+    def is_dual_degree(self):
         return self.getboolean("user", "dual_degree")
 
     @property
     def identity(self):
-        return self.get("user", "identity")
+        return self.get("user", "identity").lower()
 
     # [client]
 
     @property
-    def supplyCancelPage(self):
+    def supply_cancel_page(self):
         return self.getint("client", "supply_cancel_page")
 
     @property
-    def refreshInterval(self):
+    def refresh_interval(self):
         return self.getfloat("client", "refresh_interval")
 
     @property
-    def refreshRandomDeviation(self):
+    def refresh_random_deviation(self):
         return self.getfloat("client", "random_deviation")
 
     @property
-    def iaaaClientTimeout(self):
+    def iaaa_client_timeout(self):
         return self.getfloat("client", "iaaa_client_timeout")
 
     @property
-    def electiveClientTimeout(self):
+    def elective_client_timeout(self):
         return self.getfloat("client", "elective_client_timeout")
 
     @property
-    def electiveClientPoolSize(self):
+    def elective_client_pool_size(self):
         return self.getint("client", "elective_client_pool_size")
 
     @property
-    def loginLoopInterval(self):
+    def login_loop_interval(self):
         return self.getfloat("client", "login_loop_interval")
 
     @property
-    def isDebugPrintRequest(self):
+    def is_debug_print_request(self):
         return self.getboolean("client", "debug_print_request")
 
     @property
-    def isDebugDumpRequest(self):
+    def is_debug_dump_request(self):
         return self.getboolean("client", "debug_dump_request")
 
     # [monitor]
 
     @property
-    def monitorHost(self):
+    def monitor_host(self):
         return self.get("monitor", "host")
 
     @property
-    def monitorPort(self):
+    def monitor_port(self):
         return self.getint("monitor", "port")
 
-    # MAKR: methods
+    # [course]
 
-    def check_csv_coding(self, coding):
-        limited = self.__class__.ALLOWED_CSV_CODING
-        if coding not in limited:
-            raise ValueError("unsupported csv coding %s, csv coding must be in %s" % (coding, limited))
+    @property
+    def courses(self):
+        cs = OrderedDict()  # { id: Course }
+        rcs = {}
+        for id_, s in self.ns_sections('course'):
+            d = self.getdict(s, ('name','class','school'))
+            d.update(class_no=d.pop('class'))
+            c = Course(**d)
+            cs[id_] = c
+            rid = rcs.get(c)
+            if rid is not None:
+                raise UserInputException("Duplicated courses in sections 'course:%s' and 'course:%s'" % (rid, id_))
+            rcs[c] = id_
+        return cs
+
+    # [mutex]
+
+    @property
+    def mutexes(self):
+        ms = OrderedDict()  # { id: [str] }
+        for id_, s in self.ns_sections('mutex'):
+            lst = self.getlist(s, 'courses')
+            ms[id_] = lst
+        return ms
+
+    ## Method
 
     def check_identify(self, identity):
         limited = self.__class__.ALLOWED_IDENTIFY
@@ -139,11 +185,9 @@ class AutoElectiveConfig(BaseConfig, metaclass=Singleton):
             raise ValueError("supply_cancel_page must be positive number, not %s" % page)
 
     def get_user_subpath(self):
-        if self.isDualDegree:
+        if self.is_dual_degree:
             identity = self.identity
             self.check_identify(identity)
-
             if identity == "bfx":
-                return "%s_%s" % (self.iaaaID, identity)
-
-        return self.iaaaID
+                return "%s_%s" % (self.iaaa_id, identity)
+        return self.iaaa_id

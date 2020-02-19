@@ -1,7 +1,35 @@
 Migration Guide
 ====================
 
-v2.0.9 -> 2.1.0
+v3.0.5 -> 3.0.6
+------------------
+- 修复了 [Issue #25](https://github.com/zhongxinghong/PKUAutoElective/issues/25) 所提的 bug，如果你在使用互斥规则，请你注意下 [README.md](/README.md) 中 [互斥规则](/README.md#互斥规则) 小节的更新
+
+
+v3.0.3 -> 3.0.5
+------------------
+- 现在定义在 `config.ini` 中的课程将会像原来那样保持其在文件中的先后顺序，相应的选课优先级按从上到下的顺序从高到低排
+
+
+v3.0.1 beta -> v3.0.3
+------------------
+- 旧版本的 iaaa 和 elective 的部分 API 已经失效，请赶紧更新到最新 v3.0.3 及以上版本，旧版本将不再维护
+
+
+v2.1.0 -> v3.0.1 beta
+------------------
+- 不再使用 `course.csv` 定义课程列表，而是合并到 `config.ini` 中，因此需要仔细查看手册的 [基本用法](/README.md#基本用法) 一节，以明确新的课程定义方法。最好对 `config.ini` 进行完全重写
+- 修改了 `config.ini` 中 `student_ID` 键名为 `student_id`
+- 新引入了自定义选课规则的功能，更多请查看手册的 [基本用法](/README.md#基本用法) 一节
+- 修改了监视器路由，详细查看手册的 [监视器](/README.md#监视器) 一节
+- 更多改动细节请查看 [HISTORY.md](/HISTORY.md) 并重新阅读手册 [README.md](/README.md)
+
+#### Development Related
+- 这版在诸多方面均有较大改动，详细请查看 [HISTORY.md](/HISTORY.md)
+- 这版开始我不打算再提供项目的架构细节说明，如果你需要了解项目的实现细节，可以自行阅读源码
+
+
+v2.0.9 -> v2.1.0
 ------------------
 
 #### Development Related

@@ -1,6 +1,56 @@
 Release History
 ===============
 
+v3.0.7 (2020-02-18)
+-------------------
+- 现在可以识别出因一学期选多门体育课而收到的来自选课网的错误提示
+- 同一回合中出现多门可选的课，并且低优先级待选的课与高优先级已选的课因为 mutex rules 冲突，那么低优先级的课将会被提前忽略，详见 [Issue #25](https://github.com/zhongxinghong/PKUAutoElective/issues/25)
+
+
+v3.0.6 (2020-02-18)
+-------------------
+- 修正了 `config.ini` 注释中把 `班号` 写成 `课号` 的笔误
+- 选课网有的时候会突然显示某门课的已选人数为 0，而实际选课人数已满，此时会报一个 `Unknown tips` 的异常，现在程序可以对这种情况做出识别
+
+
+v3.0.5 (2020-02-17)
+-------------------
+- 现在通过 `config.ini` 定义的课程列表可以像原来那样保持其在文件中的先后顺序，如果在同一循环中遇到同一列表中有多个课可选，将会按照从上往下的顺序依次提交
+- 现在会捕获 `Ctrl + C` 在 `main.py` 中引发的 `KeyboardInterrupt`，这样 `Ctrl + C` 将不会再打印 traceback 而是正常退出
+
+
+v3.0.4 (2020-02-17)
+-------------------
+- 修改了 `TypeError: argmax() got an unexcepted keyword argument 'axis'` 的错误
+
+
+v3.0.3 (2020-02-17)
+-------------------
+- 修改了 iaaa 和 elective 相关接口的请求细节，包括更换某些 url，修改 headers，修改替换 scheme 为 https 等
+- 修复了相同 Course 调用 `__eq__` 和 `__hash__` 得到不同值的 bug
+- 修复了 `assert self._status is not None` 引发的 `AssertionError`
+- 修复了 `mutexes` 在无规则时仍然 print 列表的 bug
+
+
+v3.0.2 beta (2020-02-17)
+-------------------
+- 修复了 Windows 下 `Ctrl + C` 失效的问题
+
+
+v3.0.1 beta (2020-02-17)
+-------------------
+- 改用 pytorch 训练的 CNN 模型进行验证码识别，提高了识别的准确率
+- 优化了验证码图像处理函数的执行效率
+- 将多进程架构重写为多线程架构，监控进程现在变为和主进程下的一个子线程
+- 允许自定义 User-Agent 列表
+- 配置文件中 `student_ID` 键名改成 `student_id`
+- 不再使用 `course.csv` 文件配置课程列表，而是统一归入 `config.ini` 中
+- 允许用户自定义互斥规则，详见 [Issue #8](https://github.com/zhongxinghong/PKUAutoElective/issues/8)
+- 重新设计了 monitor 的路由
+- 现在 monitor 不会在 iaaa_loop / elective_loop 正常退出的时候自动退出
+- 修改了多处代码风格和设计细节，删除了大量冗余设计
+
+
 v2.1.1 (2019-09-13)
 -------------------
 - 修复了 `OperationFailedError` 使用错误的父类派生而导致不能正常初始化的问题
