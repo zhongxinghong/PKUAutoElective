@@ -1,6 +1,13 @@
 Release History
 ===============
 
+v3.0.8 (2020-02-20)
+-------------------
+- 在 elective 两个刷新接口的 headers 中添加了 `Cache-Control: max-age=0`
+- 现在可以为课程定义延迟规则，详见 [Issue #28](https://github.com/zhongxinghong/PKUAutoElective/issues/28)
+- 修改了部分代码风格
+
+
 v3.0.7 (2020-02-18)
 -------------------
 - 现在可以识别出因一学期选多门体育课而收到的来自选课网的错误提示

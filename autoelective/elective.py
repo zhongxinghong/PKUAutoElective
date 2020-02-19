@@ -135,6 +135,7 @@ class ElectiveClient(BaseClient):
     def get_SupplyCancel(self, **kwargs):
         """ 补退选 """
         headers = _get_headers_with_referer(kwargs)
+        headers["Cache-Control"] = "max-age=0"
         r = self._get(
             url=ElectiveURL.SupplyCancel,
             headers=headers,
@@ -143,9 +144,11 @@ class ElectiveClient(BaseClient):
         )
         return r
 
-    def get_supplement(self, page=1, **kwargs): # 辅双第二页，通过输入数字 2 进行跳转
+    def get_supplement(self, page=1, **kwargs):
+        """ 补退选（第二页及以后） """
         assert page > 0
         headers = _get_headers_with_referer(kwargs, ElectiveURL.SupplyCancel)
+        headers["Cache-Control"] = "max-age=0"
         r = self._get(
             url=ElectiveURL.Supplement + "?netui_row=%s" % quote("electResultLisGrid;0"),
             params={

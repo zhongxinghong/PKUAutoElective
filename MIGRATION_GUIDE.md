@@ -1,6 +1,11 @@
 Migration Guide
 ====================
 
+v3.0.6 -> 3.0.8
+------------------
+- 添加了 [Issue #28](https://github.com/zhongxinghong/PKUAutoElective/issues/28) 所提的建议，引入了延迟规则的定义，如果你需要使用，请注意 [README.md](/README.md) 中 [延迟规则](/README.md#延迟规则) 小节
+
+
 v3.0.5 -> 3.0.6
 ------------------
 - 修复了 [Issue #25](https://github.com/zhongxinghong/PKUAutoElective/issues/25) 所提的 bug，如果你在使用互斥规则，请你注意下 [README.md](/README.md) 中 [互斥规则](/README.md#互斥规则) 小节的更新

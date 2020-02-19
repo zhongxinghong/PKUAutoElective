@@ -9,20 +9,6 @@ import numpy as np
 
 class Environ(object, metaclass=Singleton):
 
-    __slots__ = [
-        'config_ini',
-        'with_monitor',
-        'iaaa_loop',
-        'elective_loop',
-        'errors',
-        'iaaa_loop_thread',
-        'elective_loop_thread',
-        'monitor_thread',
-        'goals',
-        'mutexes',
-        'ignored',
-    ]
-
     def __init__(self):
         self.config_ini = None
         self.with_monitor = None
@@ -32,6 +18,5 @@ class Environ(object, metaclass=Singleton):
         self.iaaa_loop_thread = None
         self.elective_loop_thread = None
         self.monitor_thread = None
-        self.goals = []
-        self.mutexes = np.zeros(0, dtype=np.uint8) # unit8 [N][N]; N = len(goals);
-        self.ignored = {} # {course, reason}
+        self.goals = [] # [Course]
+        self.ignored = {} # {Course, reason}

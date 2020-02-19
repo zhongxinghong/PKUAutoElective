@@ -48,11 +48,13 @@ recognizer = CaptchaRecognizer()
 electivePool = Queue(maxsize=elective_pool_size)
 reloginPool = Queue(maxsize=elective_pool_size)
 
-goals = environ.goals
+goals = environ.goals  # let N = len(goals);
 ignored = environ.ignored
-mutexes = environ.mutexes
+mutexes = np.zeros(0, dtype=np.uint8) # uint8 [N][N];
+delays = np.zeros(0, dtype=np.int) # int [N];
 
 killedElective = ElectiveClient(-1)
+NO_DELAY = -1
 
 
 class _ElectiveNeedsLogin(Exception):
@@ -185,29 +187,40 @@ def run_elective_loop():
     ## load courses
 
     cs = config.courses  # OrderedDict
-
-    ixd = {} # { cid: cix }
+    N = len(cs)
+    cid_cix = {} # { cid: cix }
 
     for ix, (cid, c) in enumerate(cs.items()):
         goals.append(c)
-        ixd[cid] = ix
+        cid_cix[cid] = ix
 
     ## load mutex
 
     ms = config.mutexes
-
-    N = len(cs)
     mutexes.resize((N, N), refcheck=False)
 
-    for mid, cids in ms.items():
+    for mid, m in ms.items():
         ixs = []
-        for cid in cids:
+        for cid in m.cids:
             if cid not in cs:
-                raise UserInputException("In mutex:%s, course %r is not defined." % (mid, cid))
-            ix = ixd[cid]
+                raise UserInputException("In 'mutex:%s', course %r is not defined" % (mid, cid))
+            ix = cid_cix[cid]
             ixs.append(ix)
         for ix1, ix2 in combinations(ixs, 2):
             mutexes[ix1, ix2] = mutexes[ix2, ix1] = 1
+
+    ## load delay
+
+    ds = config.delays
+    delays.resize(N, refcheck=False)
+    delays.fill(NO_DELAY)
+
+    for did, d in ds.items():
+        cid = d.cid
+        if cid not in cs:
+            raise UserInputException("In 'delay:%s', course %r is not defined" % (did, cid))
+        ix = cid_cix[cid]
+        delays[ix] = d.threshold
 
     ## setup elective pool
 
@@ -236,11 +249,12 @@ def run_elective_loop():
         cout.info("======== Loop %d ========" % environ.elective_loop)
         cout.info("")
 
+        line = "-" * 30
+
         ## print current plans
 
         current = [ c for c in goals if c not in ignored ]
         if len(current) > 0:
-            line = "-" * 30
             cout.info("> Current tasks")
             cout.info(line)
             for ix, course in enumerate(current):
@@ -251,7 +265,6 @@ def run_elective_loop():
         ## print ignored course
 
         if len(ignored) > 0:
-            line = "-" * 30
             cout.info("> Ignored tasks")
             cout.info(line)
             for ix, (course, reason) in enumerate(ignored.items()):
@@ -262,12 +275,22 @@ def run_elective_loop():
         ## print mutex rules
 
         if np.any(mutexes):
-            line = "-" * 30
             cout.info("> Mutex rules")
             cout.info(line)
             ixs = [ (ix1, ix2) for ix1, ix2 in np.argwhere( mutexes == 1 ) if ix1 < ix2 ]
             for ix, (ix1, ix2) in enumerate(ixs):
                 cout.info("%02d. %s --x-- %s" % (ix + 1, goals[ix1], goals[ix2]))
+            cout.info(line)
+            cout.info("")
+
+        ## print delay rules
+
+        if np.any(delays):
+            cout.info("> Delay rules")
+            cout.info(line)
+            ds = [ (cix, threshold) for cix, threshold in enumerate(delays) if threshold != NO_DELAY ]
+            for ix, (cix, threshold) in enumerate(ds):
+                cout.info("%02d. %s --- %d" % (ix + 1, goals[cix], threshold))
             cout.info(line)
             cout.info("")
 
@@ -336,7 +359,7 @@ def run_elective_loop():
 
             cout.info("Get available courses")
 
-            tasks = deque() # [(ix, course)]
+            tasks = [] # [(ix, course)]
             for ix, c in enumerate(goals):
                 if c in ignored:
                     continue
@@ -353,11 +376,17 @@ def run_elective_loop():
                     for c0 in plans: # c0 has detail
                         if c0 == c:
                             if c0.is_available():
-                                tasks.append((ix, c0))
-                                cout.info("%s is AVAILABLE now !" % c0)
+                                delay = delays[ix]
+                                if delay != NO_DELAY and c0.remaining_quota > delay:
+                                    cout.info("%s hasn't reached the delay threshold %d, skip" % (c0, delay))
+                                else:
+                                    tasks.append((ix, c0))
+                                    cout.info("%s is AVAILABLE now !" % c0)
                             break
                     else:
                         raise UserInputException("%s is not in your course plan, please check your config." % c)
+
+            tasks = deque([ (ix, c) for ix, c in tasks if c not in ignored ]) # filter again and change to deque
 
             ## elect available courses
 
