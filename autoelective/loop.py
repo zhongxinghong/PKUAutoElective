@@ -285,7 +285,7 @@ def run_elective_loop():
 
         ## print delay rules
 
-        if np.any(delays):
+        if np.any( delays != NO_DELAY ):
             cout.info("> Delay rules")
             cout.info(line)
             ds = [ (cix, threshold) for cix, threshold in enumerate(delays) if threshold != NO_DELAY ]
