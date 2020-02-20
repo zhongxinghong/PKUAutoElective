@@ -18,7 +18,19 @@
 
 ## 安装
 
-### Python 3
+### 下载Repo
+
+先下载这个 repo 至本地。点击右上角的 `Clone or download` 即可下载
+
+对于 git 命令行：
+```console
+$ git clone https://github.com/zhongxinghong/PKUAutoElective.git
+```
+接下来安装项目所需的依赖，你可以从下面的pip安装和conda安装中任选一种方式。
+
+### Pip安装
+
+#### Python 3
 
 该项目至少需要 Python 3，可以从 [Python 官网](https://www.python.org/) 下载并安装（项目开发环境为 Python 3.6.6，经测试在 Python 3.5.7 下可以正常运行）
 
@@ -28,16 +40,7 @@ $ apt-get install python3
 ```
 如果你需要在服务器上部署一个隔离的 Python 环境，你可以考虑使用 [pyenv](https://github.com/pyenv/pyenv) 和 [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv) 来安装 Python 3 及依赖包
 
-### Repo
-
-下载这个 repo 至本地。点击右上角的 `Clone or download` 即可下载
-
-对于 git 命令行：
-```console
-$ git clone https://github.com/zhongxinghong/PKUAutoElective.git
-```
-
-### Packages
+#### Packages
 
 安装 PyTorch 外的依赖包（该示例中使用清华镜像源以加快下载速度）
 ```console
@@ -58,10 +61,45 @@ $ pip3 install requests lxml simplejson Pillow numpy flask joblib -i https://pyp
 ```console
 $ pip3 install torch==1.4.0+cpu torchvision==0.5.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 ```
+Mac和Linux用户可以切换为清华镜像源以加快PyTorch安装速度。
 
 PyTorch 安装时间可能比较长，需耐心等待。
 
-如果实在无法安装，可以考虑用其他方式安装 PyTorch，详见附页 [PyTorch 安装](#PyTorch-安装)
+如果实在无法安装，可以考虑用其他方式安装 PyTorch，详见conda安装或附页 [PyTorch 安装](#PyTorch-安装)
+
+### Conda安装
+
+不再使用 pip 而是采用 conda 安装依赖包，建议Windows用户使用这种方式安装。注意：安装conda会覆盖你原有的python环境。
+
+#### Anaconda
+
+1. 从[清华Anaconda镜像](https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/)下载Anaconda安装包（推荐5.2.0）,安装过程不在此赘述，如果安装过程中未选择添加环境变量，则需要在安装完成后手动添加。
+2. 按照[Anaconda镜像使用帮助](https://mirrors.tuna.tsinghua.edu.cn/help/anaconda/)创建/修改.condarc文件，添加清华镜像源channel。（这一步非常重要，不添加channel后面可能无法成功安装依赖）
+3. 在命令行窗口中输入"conda config --show", 检查安装以及channel是否添加成功。
+
+#### Packages
+
+安装 PyTorch 外的依赖包（该示例中使用清华镜像源以加快下载速度）
+```console
+$ conda install requests lxml simplejson Pillow numpy flask joblib
+```
+
+安装 PyTorch，从 [PyTorch 官网](https://pytorch.org/) 中选择合适的条件获得下载命令，然后复制粘贴到命令行中运行即可下载安装。（注：本项目不需要 cuda，当然你可以安装带 gpu 优化的版本）
+
+示例选项：
+
+- `PyTorch Build`:  Stable (1.4)
+- `Your OS`: Windows
+- `Package`: Conda
+- `Language`: Python
+- `CUDA`: None
+
+复制粘贴所得命令在命令行中运行：
+```console
+$ conda install pytorch torchvision cpuonly -c pytorch
+```
+由于前面已经添加channel为清华镜像源，这里会直接从清华镜像下载安装。
+
 
 ## 基本用法
 
@@ -293,10 +331,6 @@ GET  /stat/loop     查看与 loop 线程相关的状态
 #### 官方渠道
 
 通过 [PyTorch 官网](https://pytorch.org/) 获取下载渠道，此处不赘述
-
-#### Conda 安装
-
-不再使用 pip 而是采用 conda 安装依赖包，切换成 [清华镜像源](https://mirrors.tuna.tsinghua.edu.cn/help/anaconda/) 来提高下载速度。我未使用过 conda，所以在此不能多做介绍了，你可以在 [conda 官网](https://docs.conda.io/projects/conda/en/latest/) 上了解一下 conda 的使用方法
 
 #### 手动安装
 
