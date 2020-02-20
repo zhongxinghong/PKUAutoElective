@@ -79,7 +79,7 @@ PyTorch 安装时间可能比较长，需耐心等待。
 
 #### Packages
 
-安装 PyTorch 外的依赖包（该示例中使用清华镜像源以加快下载速度）
+安装 PyTorch 外的依赖包
 ```console
 $ conda install requests lxml simplejson Pillow numpy flask joblib
 ```
