@@ -18,6 +18,7 @@ from .logger import ConsoleLogger, FileLogger
 from .course import Course
 from .captcha import CaptchaRecognizer
 from .parser import get_tables, get_courses, get_courses_with_detail, get_sida
+from .hook import _dump_request
 from .iaaa import IAAAClient
 from .elective import ElectiveClient
 from .const import CAPTCHA_CACHE_DIR
@@ -312,11 +313,13 @@ def run_elective_loop():
 
             ## check supply/cancel page
 
+            page_r = None
+
             if page == 1:
 
                 cout.info("Get SupplyCancel page %s" % page)
 
-                r = elective.get_SupplyCancel()
+                r = page_r = elective.get_SupplyCancel()
                 tables = get_tables(r._tree)
                 elected = get_courses(tables[1])
                 plans = get_courses_with_detail(tables[0])
@@ -341,7 +344,7 @@ def run_elective_loop():
                         raise OperationFailedError(msg="unable to get normal Supplement page %s" % page)
 
                     cout.info("Get Supplement page %s" % page)
-                    r = elective.get_supplement(page=page) # 双学位第二页
+                    r = page_r = elective.get_supplement(page=page) # 双学位第二页
                     tables = get_tables(r._tree)
                     try:
                         elected = get_courses(tables[1])
@@ -529,6 +532,15 @@ def run_elective_loop():
                     # use clear() + extend() instead of op `=` to ensure `id(elected)` doesn't change
                     elected.clear()
                     elected.extend(get_courses(tables[1]))
+
+                except RuntimeError as e:
+                    ferr.critical(e)
+                    ferr.critical("RuntimeError with Course(name=%r, class_no=%d, school=%r, status=%s, href=%r)" % (
+                                    course.name, course.class_no, course.school, course.status, course.href))
+                    # use this private function of 'hook.py' to dump the response from `get_SupplyCancel` or `get_supplement`
+                    file = _dump_request(page_r)
+                    ferr.critical("Dump response from 'get_SupplyCancel / get_supplement' to %s" % file)
+                    raise e
 
                 except Exception as e:
                     raise e  # don't increase error count here

@@ -1,6 +1,11 @@
 Release History
 ===============
 
+v3.0.9 (2020-02-20)
+-------------------
+- 对相传可能出现的莫名其妙退课的情况做了防护，详见 [Issue #30](https://github.com/zhongxinghong/PKUAutoElective/issues/30)
+
+
 v3.0.8 (2020-02-20)
 -------------------
 - 在 elective 两个刷新接口的 headers 中添加了 `Cache-Control: max-age=0`

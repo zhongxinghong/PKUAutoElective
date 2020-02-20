@@ -196,6 +196,14 @@ class ElectiveClient(BaseClient):
 
     def get_ElectSupplement(self, href, **kwargs):
         """ 补选一门课 """
+
+        if "/supplement/electSupplement.do" not in href:
+            raise RuntimeError(
+                "If %r is really a 'electSupplement' href, it would certainly contains '/supplement/electSupplement.do'. "
+                "If you see this error, that means maybe something terrible will happpen ! Please raise an issue at "
+                "https://github.com/zhongxinghong/PKUAutoElective/issues" % href
+            )
+
         headers = _get_headers_with_referer(kwargs, ElectiveURL.SupplyCancel)
         r = self._get(
             url="%s://%s%s" % (ElectiveURL.Scheme, ElectiveURL.Host, href),
