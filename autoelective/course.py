@@ -45,6 +45,12 @@ class Course(object):
         assert self._status is not None
         return self._status[1]
 
+    @property
+    def remaining_quota(self):
+        assert self._status is not None
+        maxi, used = self._status
+        return maxi - used
+
     def is_available(self):
         assert self._status is not None
         maxi, used = self._status

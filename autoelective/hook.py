@@ -199,10 +199,7 @@ def debug_print_request(r, **kwargs):
     cout.debug("")
 
 
-def debug_dump_request(r, **kwargs):
-    if not config.is_debug_dump_request:
-        return
-
+def _dump_request(r):
     if "_client" in r.request.__dict__:  # _client will be set by BaseClient
         client = r.request._client
         r.request._client = None  # don't save client object
@@ -215,10 +212,18 @@ def debug_dump_request(r, **kwargs):
     filename = "%s.%s.gz" % (timestamp, basename)  # put timestamp first
     file = os.path.normpath(os.path.abspath(os.path.join(_USER_REQUEST_LOG_DIR, filename)))
 
-    cout.debug("Dump request %s to %s" % (r.url, file))
     pickle_gzip_dump(r, file)
 
     # restore objects defined by autoelective package
     if "_client" in r.request.__dict__:
         r.request._client = client
     r.request.hooks = hooks
+
+    return file
+
+
+def debug_dump_request(r, **kwargs):
+    if not config.is_debug_dump_request:
+        return
+    file = _dump_request(r)
+    cout.debug("Dump request %s to %s" % (r.url, file))
