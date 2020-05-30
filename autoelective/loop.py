@@ -97,6 +97,9 @@ def run_iaaa_loop():
 
             iaaa = IAAAClient(timeout=iaaa_timeout) # not reusable
 
+            # request elective's home page to get cookies
+            r = iaaa.oauth_home()
+
             r = iaaa.oauth_login(username, password)
 
             try:

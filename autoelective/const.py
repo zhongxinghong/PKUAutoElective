@@ -59,6 +59,7 @@ class ElectiveURL(object):
     """
     Scheme           = "https"
     Host             = "elective.pku.edu.cn"
+    HomePage         = "https://elective.pku.edu.cn/elective2008/"
     SSOLoginRedirect = "http://elective.pku.edu.cn:80/elective2008/ssoLogin.do"
     SSOLogin         = "https://elective.pku.edu.cn/elective2008/ssoLogin.do"
     Logout           = "https://elective.pku.edu.cn/elective2008/logout.do"

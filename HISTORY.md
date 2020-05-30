@@ -1,6 +1,10 @@
 Release History
 ===============
 
+v4.0.1 (2020-05-30)
+-------------------
+- 修复了 IAAA 登录报 500 状态码的问题，详见 [Issue #35](https://github.com/zhongxinghong/PKUAutoElective/issues/35)
+
 v3.0.9 (2020-02-20)
 -------------------
 - 对相传可能出现的莫名其妙退课的情况做了防护，详见 [Issue #30](https://github.com/zhongxinghong/PKUAutoElective/issues/30)
