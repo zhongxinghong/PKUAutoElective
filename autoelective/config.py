@@ -140,12 +140,24 @@ class AutoElectiveConfig(BaseConfig, metaclass=Singleton):
     # [monitor]
 
     @property
-    def monitor_host(self):
+    def monitor_type(self):
+        return self.get("monitor", "type")
+
+    @property
+    def monitor_webpage_host(self):
         return self.get("monitor", "host")
 
     @property
-    def monitor_port(self):
+    def monitor_webpage_port(self):
         return self.getint("monitor", "port")
+
+    @property
+    def monitor_wechatpush_key(self):
+        return self.get("monitor", "key")
+
+    @property
+    def monitor_wechatpush_pushinterval(self):
+        return self.getint("monitor", "push_interval")
 
     # [course]
 
