@@ -385,6 +385,7 @@ def run_elective_loop():
                                 delay = delays[ix]
                                 if delay != NO_DELAY and c0.remaining_quota > delay:
                                     cout.info("%s hasn't reached the delay threshold %d, skip" % (c0, delay))
+                                    break
                                 else:
                                     tasks.append((ix, c0))
                                     cout.info("%s is AVAILABLE now !" % c0)
