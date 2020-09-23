@@ -385,10 +385,16 @@ def run_elective_loop():
                                 delay = delays[ix]
                                 if delay != NO_DELAY and c0.remaining_quota > delay:
                                     cout.info("%s hasn't reached the delay threshold %d, skip" % (c0, delay))
+                                    break
                                 else:
                                     tasks.append((ix, c0))
                                     cout.info("%s is AVAILABLE now !" % c0)
-                            break
+                                    break
+                            else:
+                                # tap refresh
+                                r = elective.get_Refresh(c0.href)
+                                time.sleep(3)
+                                break
                     else:
                         raise UserInputException("%s is not in your course plan, please check your config." % c)
 

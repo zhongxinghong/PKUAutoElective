@@ -9,6 +9,7 @@ from .client import BaseClient
 from .hook import get_hooks, debug_dump_request, debug_print_request, check_status_code, with_etree,\
     check_elective_title, check_elective_tips
 from .const import USER_AGENT_LIST, ElectiveURL
+import urllib.parse as urlparse
 
 _hooks_check_status_code = get_hooks(
     # debug_dump_request,
@@ -207,6 +208,26 @@ class ElectiveClient(BaseClient):
         headers = _get_headers_with_referer(kwargs, ElectiveURL.SupplyCancel)
         r = self._get(
             url="%s://%s%s" % (ElectiveURL.Scheme, ElectiveURL.Host, href),
+            headers=headers,
+            hooks=_hooks_check_tips,
+            **kwargs,
+        )
+        return r
+
+    def get_Refresh(self, href, **kwargs):
+        """ 点击刷新 """
+        headers = _get_headers_with_referer(kwargs, ElectiveURL.SupplyCancel)
+        # get index and seq from href
+        parsed = urlparse.urlparse(href)
+        querys = urlparse.parse_qs(parsed.query)
+        index = querys["index"]
+        seq = querys["seq"]
+        r = self._post(
+            url=ElectiveURL.Refresh,
+            data={
+                "index": index,
+                "seq": seq,
+            },
             headers=headers,
             hooks=_hooks_check_tips,
             **kwargs,
