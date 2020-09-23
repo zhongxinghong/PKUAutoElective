@@ -23,8 +23,8 @@ mkdir(_USER_REQUEST_LOG_DIR)
 
 # __regex_errInfo        = re.compile(r"<strong>出错提示:</strong>(\S+?)<br>", re.S)
 _regexErrorOperatingTime = re.compile(r'目前不是(\S+?)时间，因此不能进行相应操作。')
-_regexElectionSuccess    = re.compile(r'补选课程(\S+)成功，请查看已选上列表确认，并查看选课结果。')
-_regexMutex              = re.compile(r'(\S+)与(\S+)只能选其一门。')
+_regexElectionSuccess    = re.compile(r'补选课程([\s\S]*)成功，请查看已选上列表确认，并查看选课结果。')
+_regexMutex              = re.compile(r'([\s\S]*)与([\s\S]*)只能选其一门。')
 
 _DUMMY_HOOK = {"response": []}
 

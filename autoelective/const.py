@@ -56,6 +56,7 @@ class ElectiveURL(object):
     Supplement              补退选页第一页之后
     DrawServlet             获取一张验证码
     validate                补退选验证码校验接口
+    Refresh                 刷新按钮
     """
     Scheme           = "https"
     Host             = "elective.pku.edu.cn"
@@ -69,3 +70,5 @@ class ElectiveURL(object):
     Supplement       = "https://elective.pku.edu.cn/elective2008/edu/pku/stu/elective/controller/supplement/supplement.jsp"
     DrawServlet      = "https://elective.pku.edu.cn/elective2008/DrawServlet"
     Validate         = "https://elective.pku.edu.cn/elective2008/edu/pku/stu/elective/controller/supplement/validate.do"
+    Refresh          = "https://elective.pku.edu.cn/elective2008/edu/pku/stu/elective/controller/supplement/refreshLimit.do"
+
