@@ -126,8 +126,16 @@ class AutoElectiveConfig(BaseConfig, metaclass=Singleton):
         return self.getint("client", "elective_client_pool_size")
 
     @property
+    def elective_client_max_life(self):
+        return self.getint("client", "elective_client_max_life")
+
+    @property
     def login_loop_interval(self):
         return self.getfloat("client", "login_loop_interval")
+
+    @property
+    def is_print_mutex_rules(self):
+        return self.getboolean("client", "print_mutex_rules")
 
     @property
     def is_debug_print_request(self):

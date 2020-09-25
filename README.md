@@ -1,6 +1,6 @@
 # PKUAutoElective
 
-北大选课网 **补退选** 阶段自动选课小工具 v4.0.1 (2020.05.30)
+北大选课网 **补退选** 阶段自动选课小工具 v5.0.1 (2020.09.25)
 
 目前支持 `本科生（含辅双）` 和 `研究生` 选课
 
@@ -70,7 +70,7 @@ PyTorch 安装时间可能比较长，需耐心等待。
 2. 用文本编辑器打开 `config.ini` （建议用代码编辑器，当然记事本一类的系统工具也可以）
 3. 配置 `[user]`，详细见注释
     - 如果是双学位账号，设置 `dual_degree` 为 `true`，同时需要设置登录身份 `identity`，非双学位账号两者均保持默认即可
-4. 在选课网上，将待选课程手动添加到选课网的 `选课计划` 中，并确保它们处在 `选课计划` 列表的 **同一页**
+4. 在选课网上，将待选课程手动添加到选课网的 `补退选` 页 `选课计划` 中，并确保它们处在 `补退选` 页 `选课计划` 列表的 **同一页**
     - 如果想刷的课处在不同页，可以参考 [多进程选课](#多进程选课)
     - 该项目无法事前检查选课计划的合理性，只会根据选课的提交结果来判断某门课是否能够被选上，所以请自行 **确保填写的课程在有名额的时候可以被选上**，以免浪费时间。选课失败引发的常见错误可参见 [异常处理](#异常处理)
 5. 配置 `[course]` 定义待选课程，详细见注释
@@ -198,10 +198,11 @@ GET  /stat/loop     查看与 loop 线程相关的状态
 
 ### 自定义 User-Agent 池
 
-在 `user_agents.txt` 中提供了默认的 User-Agent 池。每次进程运行的时候，IAAA 客户端和 Elective 客户端会分别从中随机挑选一个 User-Agent，在该进程结束前将不再更换
+在 `user_agents.txt.gz` 中提供了默认的 User-Agent 池，可以通过 `gzip` 工具解压得到 `user_agents.txt` 加以查看
 
-如果你需要自定义 User-Agent 池，你可以在根目录下创建一个 `user_agents.user.txt`（建议复制 `user_agents.txt` 并重命名之，以保证这个文件是 `utf-8` 编码），然后在其中定义自己的 User-Agent 池，程序会优先选择读入用户自定义的 User-Agent 池
+每次从 IAAA 登录时，都会从中随机选择一个 User-Agent 并设置到 IAAA 客户端和 Elective 客户端上，在下次重新登录前将不再更换
 
+如果你需要自定义 User-Agent 池，可以在根目录下创建一个 `user_agents.user.txt`，在其中对其进行定义。格式为一行一条 User-Agent，具体格式可参考 `user_agents.txt`，需要确保文件为 `utf-8` 编码。程序会优先选择读入用户自定义的 User-Agent 池
 
 ### DEBUG 相关
 
@@ -217,7 +218,8 @@ GET  /stat/loop     查看与 loop 线程相关的状态
 - `iaaa_client_timeout` IAAA 客户端的最长请求超时
 - `elective_client_timeout` Elective 客户端的最长请求超时
 - `login_loop_interval` IAAA 登录循环每两回合的时间间隔
-
+- `elective_client_max_life` 设置 Elective 客户端的存活时间。超过存活时间的 Elective 客户端会主动登出并自动重登
+- `print_mutex_rules` 是否在每次循环时打印完整的互斥规则列表。如果你定义了很复杂的互斥规则，你可以将这个值设为 `False` 以避免每次循环都将整个列表重复打印一遍
 
 ## 异常处理
 

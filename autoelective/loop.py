@@ -3,6 +3,7 @@
 # filename: loop.py
 # modified: 2019-09-11
 
+import os
 import time
 import random
 from queue import Queue
@@ -21,8 +22,9 @@ from .parser import get_tables, get_courses, get_courses_with_detail, get_sida
 from .hook import _dump_request
 from .iaaa import IAAAClient
 from .elective import ElectiveClient
-from .const import CAPTCHA_CACHE_DIR
+from .const import CAPTCHA_CACHE_DIR, USER_AGENT_LIST, WEB_LOG_DIR
 from .exceptions import *
+from ._internal import mkdir
 
 environ = Environ()
 config = AutoElectiveConfig()
@@ -33,21 +35,26 @@ username = config.iaaa_id
 password = config.iaaa_password
 is_dual_degree = config.is_dual_degree
 identity = config.identity
-interval = config.refresh_interval
-deviation = config.refresh_random_deviation
-page = config.supply_cancel_page
-iaaa_timeout = config.iaaa_client_timeout
-elective_timeout = config.elective_client_timeout
+refresh_interval = config.refresh_interval
+refresh_random_deviation = config.refresh_random_deviation
+supply_cancel_page = config.supply_cancel_page
+iaaa_client_timeout = config.iaaa_client_timeout
+elective_client_timeout = config.elective_client_timeout
 login_loop_interval = config.login_loop_interval
-elective_pool_size = config.elective_client_pool_size
+elective_client_pool_size = config.elective_client_pool_size
+elective_client_max_life = config.elective_client_max_life
+is_print_mutex_rules = config.is_print_mutex_rules
 
 config.check_identify(identity)
-config.check_supply_cancel_page(page)
+config.check_supply_cancel_page(supply_cancel_page)
+
+_USER_WEB_LOG_DIR = os.path.join(WEB_LOG_DIR, config.get_user_subpath())
+mkdir(_USER_WEB_LOG_DIR)
 
 recognizer = CaptchaRecognizer()
 
-electivePool = Queue(maxsize=elective_pool_size)
-reloginPool = Queue(maxsize=elective_pool_size)
+electivePool = Queue(maxsize=elective_client_pool_size)
+reloginPool = Queue(maxsize=elective_client_pool_size)
 
 goals = environ.goals  # let N = len(goals);
 ignored = environ.ignored
@@ -61,11 +68,15 @@ NO_DELAY = -1
 class _ElectiveNeedsLogin(Exception):
     pass
 
+class _ElectiveExpired(Exception):
+    pass
+
+
 def _get_refresh_interval():
-    if deviation <= 0:
-        return interval
-    delta = (random.random() * 2 - 1) * deviation * interval
-    return interval + delta
+    if refresh_random_deviation <= 0:
+        return refresh_interval
+    delta = (random.random() * 2 - 1) * refresh_random_deviation * refresh_interval
+    return refresh_interval + delta
 
 def _ignore_course(course, reason):
     ignored[course.to_simplified()] = reason
@@ -75,6 +86,16 @@ def _add_error(e):
     name = clz.__name__
     key = "[%s] %s" % (e.code, name) if hasattr(clz, "code") else name
     environ.errors[key] += 1
+
+def _format_timestamp(timestamp):
+    if timestamp == -1:
+        return str(timestamp)
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
+
+def _dump_respose_content(content, filename):
+    path = os.path.join(_USER_WEB_LOG_DIR, filename)
+    with open(path, 'wb') as fp:
+        fp.write(content)
 
 
 def run_iaaa_loop():
@@ -90,12 +111,15 @@ def run_iaaa_loop():
                 return
 
         environ.iaaa_loop += 1
+        user_agent = random.choice(USER_AGENT_LIST)
 
         cout.info("Try to login IAAA (client: %s)" % elective.id)
+        cout.info("User-Agent: %s" % user_agent)
 
         try:
 
-            iaaa = IAAAClient(timeout=iaaa_timeout) # not reusable
+            iaaa = IAAAClient(timeout=iaaa_client_timeout) # not reusable
+            iaaa.set_user_agent(user_agent)
 
             # request elective's home page to get cookies
             r = iaaa.oauth_home()
@@ -109,6 +133,8 @@ def run_iaaa_loop():
                 raise OperationFailedError(msg="Unable to parse IAAA token. response body: %s" % r.content)
 
             elective.clear_cookies()
+            elective.set_user_agent(user_agent)
+
             r = elective.sso_login(token)
 
             if is_dual_degree:
@@ -117,7 +143,14 @@ def run_iaaa_loop():
                 referer = r.url
                 r = elective.sso_login_dual_degree(sida, sttp, referer)
 
-            cout.info("Login success (client: %s)" % elective.id)
+            if elective_client_max_life == -1:
+                elective.set_expired_time(-1)
+            else:
+                elective.set_expired_time(int(time.time()) + elective_client_max_life)
+
+            cout.info("Login success (client: %s, expired_time: %s)" % (
+                      elective.id, _format_timestamp(elective.expired_time)))
+            cout.info("")
 
             electivePool.put_nowait(elective)
             elective = None
@@ -228,15 +261,41 @@ def run_elective_loop():
 
     ## setup elective pool
 
-    for ix in range(1, elective_pool_size + 1):
-        electivePool.put_nowait(ElectiveClient(id=ix, timeout=elective_timeout))
+    for ix in range(1, elective_client_pool_size + 1):
+        client = ElectiveClient(id=ix, timeout=elective_client_timeout)
+        client.set_user_agent(random.choice(USER_AGENT_LIST))
+        electivePool.put_nowait(client)
 
     ## print header
 
     header = "# PKU Auto-Elective Tool v%s (%s) #" % (__version__, __date__)
     line = "#" + "-" * (len(header) - 2) + "#"
+
     cout.info(line)
     cout.info(header)
+    cout.info(line)
+    cout.info("")
+
+    line = "-" * 30
+
+    cout.info("> User Agent")
+    cout.info(line)
+    cout.info("pool_size: %d" % len(USER_AGENT_LIST))
+    cout.info(line)
+    cout.info("")
+    cout.info("> Config")
+    cout.info(line)
+    cout.info("is_dual_degree: %s" % is_dual_degree)
+    cout.info("identity: %s" % identity)
+    cout.info("refresh_interval: %s" % refresh_interval)
+    cout.info("refresh_random_deviation: %s" % refresh_random_deviation)
+    cout.info("supply_cancel_page: %s" % supply_cancel_page)
+    cout.info("iaaa_client_timeout: %s" % iaaa_client_timeout)
+    cout.info("elective_client_timeout: %s" % elective_client_timeout)
+    cout.info("login_loop_interval: %s" % login_loop_interval)
+    cout.info("elective_client_pool_size: %s" % elective_client_pool_size)
+    cout.info("elective_client_max_life: %s" % elective_client_max_life)
+    cout.info("is_print_mutex_rules: %s" % is_print_mutex_rules)
     cout.info(line)
     cout.info("")
 
@@ -252,8 +311,6 @@ def run_elective_loop():
         cout.info("")
         cout.info("======== Loop %d ========" % environ.elective_loop)
         cout.info("")
-
-        line = "-" * 30
 
         ## print current plans
 
@@ -282,8 +339,11 @@ def run_elective_loop():
             cout.info("> Mutex rules")
             cout.info(line)
             ixs = [ (ix1, ix2) for ix1, ix2 in np.argwhere( mutexes == 1 ) if ix1 < ix2 ]
-            for ix, (ix1, ix2) in enumerate(ixs):
-                cout.info("%02d. %s --x-- %s" % (ix + 1, goals[ix1], goals[ix2]))
+            if is_print_mutex_rules:
+                for ix, (ix1, ix2) in enumerate(ixs):
+                    cout.info("%02d. %s --x-- %s" % (ix + 1, goals[ix1], goals[ix2]))
+            else:
+                cout.info("%d mutex rules" % len(ixs))
             cout.info(line)
             cout.info("")
 
@@ -306,26 +366,43 @@ def run_elective_loop():
 
         ## print client info
 
-        cout.info("> Current client: %s, (qsize: %s)" % (elective.id, electivePool.qsize() + 1))
+        cout.info("> Current client: %s (qsize: %s)" % (elective.id, electivePool.qsize() + 1))
+        cout.info("> Client expired time: %s" % _format_timestamp(elective.expired_time))
+        cout.info("User-Agent: %s" % elective.user_agent)
         cout.info("")
 
         try:
 
-            if not elective.hasLogined:
+            if not elective.has_logined:
                 raise _ElectiveNeedsLogin  # quit this loop
+
+            if elective.is_expired:
+                try:
+                    cout.info("Logout")
+                    r = elective.logout()
+                except Exception as e:
+                    cout.warning("Logout error")
+                    cout.exception(e)
+                raise _ElectiveExpired   # quit this loop
 
             ## check supply/cancel page
 
             page_r = None
 
-            if page == 1:
+            if supply_cancel_page == 1:
 
-                cout.info("Get SupplyCancel page %s" % page)
+                cout.info("Get SupplyCancel page %s" % supply_cancel_page)
 
                 r = page_r = elective.get_SupplyCancel()
                 tables = get_tables(r._tree)
-                elected = get_courses(tables[1])
-                plans = get_courses_with_detail(tables[0])
+                try:
+                    elected = get_courses(tables[1])
+                    plans = get_courses_with_detail(tables[0])
+                except IndexError as e:
+                    filename = "elective.get_SupplyCancel_%d.html" % int(time.time() * 1000)
+                    _dump_respose_content(r.content, filename)
+                    cout.info("Page dump to %s" % filename)
+                    raise UnexceptedHTMLFormat
 
             else:
                 #
@@ -344,10 +421,10 @@ def run_elective_loop():
                 retry = 3
                 while True:
                     if retry == 0:
-                        raise OperationFailedError(msg="unable to get normal Supplement page %s" % page)
+                        raise OperationFailedError(msg="unable to get normal Supplement page %s" % supply_cancel_page)
 
-                    cout.info("Get Supplement page %s" % page)
-                    r = page_r = elective.get_supplement(page=page) # 双学位第二页
+                    cout.info("Get Supplement page %s" % supply_cancel_page)
+                    r = page_r = elective.get_supplement(page=supply_cancel_page) # 双学位第二页
                     tables = get_tables(r._tree)
                     try:
                         elected = get_courses(tables[1])
@@ -563,6 +640,11 @@ def run_elective_loop():
             cout.warning("OperationFailedError encountered")
             _add_error(e)
 
+        except UnexceptedHTMLFormat as e:
+            ferr.error(e)
+            cout.warning("UnexceptedHTMLFormat encountered")
+            _add_error(e)
+
         except RequestException as e:
             ferr.error(e)
             cout.warning("RequestException encountered")
@@ -575,6 +657,12 @@ def run_elective_loop():
 
         except _ElectiveNeedsLogin as e:
             cout.info("client: %s needs Login" % elective.id)
+            reloginPool.put_nowait(elective)
+            elective = None
+            noWait = True
+
+        except _ElectiveExpired as e:
+            cout.info("client: %s expired" % elective.id)
             reloginPool.put_nowait(elective)
             elective = None
             noWait = True

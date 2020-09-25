@@ -3,12 +3,14 @@
 # filename: elective.py
 # modified: 2019-09-10
 
+import time
+import string
 import random
 from urllib.parse import quote
 from .client import BaseClient
 from .hook import get_hooks, debug_dump_request, debug_print_request, check_status_code, with_etree,\
     check_elective_title, check_elective_tips
-from .const import USER_AGENT_LIST, ElectiveURL
+from .const import ElectiveURL
 
 _hooks_check_status_code = get_hooks(
     # debug_dump_request,
@@ -33,9 +35,6 @@ _hooks_check_tips = get_hooks(
     check_elective_tips,
 )
 
-_DUMMY_COOKIES = "JSESSIONID=TH9sd1HBgw0k3RTFxMHKmWpPp4bMJ5FnTGn7WmvyH2JmTqNGgxpS!1984960435"
-
-
 def _get_headers_with_referer(kwargs, referer=ElectiveURL.HelpController):
     headers = kwargs.pop("headers", {})
     headers["Referer"] = referer
@@ -51,32 +50,45 @@ class ElectiveClient(BaseClient):
         "Host": ElectiveURL.Host,
         "Upgrade-Insecure-Requests": "1",
         "Connection": "keep-alive",
-        "User-Agent": random.choice(USER_AGENT_LIST),
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "same-origin",
     }
 
     def __init__(self, id, **kwargs):
         super().__init__(**kwargs)
         self._id = id
+        self._expired_time = -1
 
     @property
     def id(self):
         return self._id
 
     @property
-    def hasLogined(self):
+    def expired_time(self):
+        return self._expired_time
+
+    @property
+    def is_expired(self):
+        if self._expired_time == -1:
+            return False
+        return int(time.time()) > self._expired_time
+
+    @property
+    def has_logined(self):
         return len(self._session.cookies) > 0
 
+    def set_expired_time(self, expired_time):
+        self._expired_time = expired_time
 
     def sso_login(self, token, **kwargs):
+        dummy_cookie = "JSESSIONID=%s!%d" % (
+            ''.join(random.choice(string.digits + string.ascii_letters) for _ in range(52)),
+            random.randint(184960435, 1984960435),
+        )
         headers = kwargs.pop("headers", {}) # no Referer
-        headers["Cookie"] = _DUMMY_COOKIES  # 必须要指定一个 Cookie 否则报 101 status_code
-        headers["Sec-Fetch-Site"] = "cross-site"
+        headers["Cookie"] = dummy_cookie  # 必须要指定一个 Cookie 否则报 101 status_code
         r = self._get(
             url=ElectiveURL.SSOLogin,
             params={
-                "rand": str(random.random()),
+                "_rand": str(random.random()),
                 "token": token,
             },
             headers=headers,
@@ -89,7 +101,6 @@ class ElectiveClient(BaseClient):
         assert len(sida) == 32
         assert sttp in ("bzx", "bfx")
         headers = kwargs.pop("headers", {}) # no Referer
-        headers["Sec-Fetch-Site"] = "cross-site"
         r = self._get(
             url=ElectiveURL.SSOLogin,
             params={

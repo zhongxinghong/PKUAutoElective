@@ -1,9 +1,26 @@
 Release History
 ===============
 
+v5.0.1 (2020-09-25)
+-------------------
+- User-Agent 池的大小扩充至 6000+
+- sso_login 时将使用随机生成的 dummy cookie
+- 删除所有 `Sec-Fetch-*` 请求头
+- 现在 elective 客户端可以设置存活时间，到期后 elective 会话将自动登出，以期解决 [Issue #47](https://github.com/zhongxinghong/PKUAutoElective/issues/47)
+- 每次重新登录 elective 时都将更换 User-Agent
+- 现在可以选择是否打印完整的互斥规则列表
+- 修正了配置文件和用户手册中关于 `supply_cancel_page` 选项的说明
+- 修改配置文件中 `elective_client_pool_size` 选项的默认值为 `2`
+- 程序启动时将首先打印重要的配置信息
+- 对 elective 可能返回的错误页面加以捕获，以期解决 [Issue #44](https://github.com/zhongxinghong/PKUAutoElective/issues/44)
+- 修改 sso_login 接口的参数名 `rand` 为 `_rand`
+- 更改识别 elective 响应结果的正则表达式，以确保包含空格的课程名也能被正确解析
+
+
 v4.0.1 (2020-05-30)
 -------------------
 - 修复了 IAAA 登录报 500 状态码的问题，详见 [Issue #35](https://github.com/zhongxinghong/PKUAutoElective/issues/35)
+
 
 v3.0.9 (2020-02-20)
 -------------------

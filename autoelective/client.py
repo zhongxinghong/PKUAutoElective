@@ -19,6 +19,10 @@ class BaseClient(object):
         self._session = Session()
         self._session.headers.update(self.__class__.default_headers)
 
+    @property
+    def user_agent(self):
+        return self._session.headers.get('User-Agent')
+
     def _request(self, method, url,
             params=None, data=None, headers=None, cookies=None, files=None,
             auth=None, timeout=None, allow_redirects=True, proxies=None,
@@ -63,6 +67,9 @@ class BaseClient(object):
 
     def _post(self, url, data=None, json=None, **kwargs):
         return self._request('POST', url, data=data, json=json, **kwargs)
+
+    def set_user_agent(self, user_agent):
+        self._session.headers["User-Agent"] = user_agent
 
     def persist_cookies(self, r):
         """

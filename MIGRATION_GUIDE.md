@@ -1,6 +1,11 @@
 Migration Guide
 ====================
 
+v3.0.8 -> 5.0.1
+------------------
+- `config.ini` 中添加 `elective_client_max_life` 用于设置 elective 客户端的存活时间，到期后 elective 会话会被主动关闭
+- `config.ini` 中添加 `print_mutex_rules` 选项，可以选择是否打印完整的互斥规则列表
+
 v3.0.6 -> 3.0.8
 ------------------
 - 添加了 [Issue #28](https://github.com/zhongxinghong/PKUAutoElective/issues/28) 所提的建议，引入了延迟规则的定义，如果你需要使用，请注意 [README.md](/README.md) 中 [延迟规则](/README.md#延迟规则) 小节
