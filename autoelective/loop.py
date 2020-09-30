@@ -393,7 +393,9 @@ def run_elective_loop():
                             else:
                                 # tap refresh
                                 r = elective.get_Refresh(c0.href)
-                                time.sleep(3)
+                                if len(r.text) > 100:
+                                    time.sleep(3)
+                                    cout.warn("need refresh again")
                                 break
                     else:
                         raise UserInputException("%s is not in your course plan, please check your config." % c)
