@@ -1,6 +1,15 @@
 Release History
 ===============
 
+v6.0.0 (2021-03-12)
+-------------------
+- 实现了对选课网新验证码的识别
+- 更新了对选课网部分 API 的请求方法 (get_supplement, get_Validate)
+- 修复了无法获取到位于补退选列表第一页之后课程的问题，详见 [Issue #54](https://github.com/zhongxinghong/PKUAutoElective/issues/54), [Issue #55](https://github.com/zhongxinghong/PKUAutoElective/issues/55)
+- 修复了无法正确捕获会话超时的错误信息导致一直报错 UnexceptedHTMLFormat 的问题，详见 [Issue #56](https://github.com/zhongxinghong/PKUAutoElective/issues/56)
+- 修复了无法正确识别补选课程成功时所返回的提示信息的问题
+
+
 v5.0.1 (2020-09-25)
 -------------------
 - User-Agent 池的大小扩充至 6000+

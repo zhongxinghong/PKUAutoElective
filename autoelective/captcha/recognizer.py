@@ -4,47 +4,26 @@
 # modified: 2020-02-16
 
 import os
-from io import BytesIO
-import joblib
-from PIL import Image
+import time
 import numpy as np
+import cv2
 import torch
-from .processor import denoise8, denoise24, crop
-from .cnn import CNN
-from ..utils import xMD5
-from ..const import CNN_MODEL_FILE
+from .processor import split_captcha
+from .cnn import CaptchaCNN
 
 
 class Captcha(object):
 
-    __slots__ = ['_code','_original','_denoised','_segments','_spans']
+    __slots__ = ['_code','_im_data','_im_segs']
 
-    def __init__(self, code, original, denoised, segments, spans):
+    def __init__(self, code, im_data, im_segs):
         self._code = code
-        self._original = original
-        self._denoised = denoised
-        self._segments = segments
-        self._spans = spans
+        self._im_data = im_data
+        self._im_segs = im_segs
 
     @property
     def code(self):
         return self._code
-
-    @property
-    def original(self):
-        return self._original
-
-    @property
-    def denoised(self):
-        return self._denoised
-
-    @property
-    def segments(self):
-        return self._segments
-
-    @property
-    def spans(self):
-        return self._spans
 
     def __repr__(self):
         return '%s(%r)' % (
@@ -54,50 +33,36 @@ class Captcha(object):
 
     def save(self, folder):
         code = self._code
-        oim = self._original
-        dim = self._denoised
-        segs = self._segments
-        spans = self._spans
-        md5 = xMD5(oim.tobytes())
+        data = self._im_data
+        segs = self._im_segs
+        timestamp = int(time.time() * 1000)
 
-        oim.save(os.path.join(folder, "%s_original_%s.jpg" % (code, md5)))
-        dim.save(os.path.join(folder, "%s_denoised_%s.jpg" % (code, md5)))
-        for im, (st, ed), c in zip(segs, spans, code):
-            im.save(os.path.join(folder, "%s_%s_(%d,%d)_%s.jpg" % (code, c, st, ed, md5)))
+        filepath = os.path.join(folder, "%s_%d.gif" % (code, timestamp))
+        with open(filepath, 'wb') as fp:
+            fp.write(data)
+
+        for ix, M in enumerate(segs):
+            filepath = os.path.join(folder, "%s_c%d_%d.png" % (code, ix, timestamp))
+            cv2.imwrite(filepath, M)
 
 
 class CaptchaRecognizer(object):
 
-    def __init__(self):
-        self._model = CNN()
-        self._model.load_state_dict(joblib.load(CNN_MODEL_FILE))
+    def __init__(self, model_file):
+        self._model = CaptchaCNN()
+        self._model.load_state_dict(torch.load(model_file, map_location='cpu'))
+        self._model.eval()
 
-    def recognize(self, im):
-        assert isinstance(im, bytes)
+    def recognize(self, im_data):
+        assert isinstance(im_data, bytes)
 
-        N = 22
+        N = 52
+        labels = self._model.CAPTCHA_LABELS
 
-        fp = BytesIO(im)
-        im = Image.open(fp)
-        oim = im
-
-        im = im.convert("1")
-
-        im = denoise8(im, repeat=1)
-        im = denoise24(im, repeat=1)
-        dim = im
-
-        segs, spans = crop(im)
-
-        Xlist = []
-        for im in segs:
-            X = np.array(im, dtype=np.uint8)
-            X = 1 - X
-            Xlist.append(X)
-
-        Xlist = np.array(Xlist, dtype=np.float32).reshape(-1, 1, N, N)
+        im_segs = split_captcha(im_data)
+        Xlist = np.array(im_segs, dtype=np.float32).reshape(-1, 1, N, N)
         ylist = self._model(torch.from_numpy(Xlist))
 
-        code = ''.join( self._model.LABELS[ix] for ix in torch.argmax(ylist, dim=1) )
+        code = ''.join( labels[ix] for ix in torch.argmax(ylist, dim=1) )
 
-        return Captcha(code, oim, dim, segs, spans)
+        return Captcha(code, im_data, im_segs)

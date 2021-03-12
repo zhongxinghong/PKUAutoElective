@@ -1,36 +1,45 @@
 # PKUAutoElective
 
-北大选课网 **补退选** 阶段自动选课小工具 v5.0.1 (2020.09.25)
+北大选课网 **补退选** 阶段自动选课小工具 v6.0.0 (2021.03.12)
 
 目前支持 `本科生（含辅双）` 和 `研究生` 选课
 
-**注意**：选课网现在已经修改了部分 API 的访问方法，老版 v2.x.x 中的部分接口已经失效，请赶紧更新到 v3.0.3 及以上的新版 ！
+## 停更说明
+
+感谢大家两年多来对这个项目的支持！我已经大四了，这学期结束后我将毕业，那之后我将不再更新这个项目。由于测试较为困难，这个项目一直以来基本都没有接受过 PR，如果有更改和扩充功能的需要，建议你 fork 一个自己的分支。停更后该项目不会 archive，有任何问题仍然可以在 Issue 里共同讨论，如果你想宣传自己的改版后的分支，也可以在 Issue 里分享
+
+小白兔 写于 2021.03.12
+
+## 注意事项
+
+特地将一些重要的说明提前写在这里，希望能得到足够的重视
+
+1. 不要使用过低的刷新间隔，以免对选课网服务器造成压力，建议时间间隔不小于 4 秒
+2. 选课网存在 IP 级别的限流，访问过于频繁可能会导致 IP 被封禁
 
 ## 特点
 
 - 运行过程中不需要进行任何人为操作，且支持同时通过其他设备、IP 访问选课网
-- 利用 CNN 模型自动识别验证码，具体参见我的项目 [PKUElectiveCaptcha](https://github.com/zhongxinghong/PKUElectiveCaptcha)，单个字母的识别率为 **99.88%**
+- 利用专门训练的 CNN 模型自动识别验证码，识别准确率为 99.16%，详细见 [PKUElectiveCaptcha2021Spring](https://github.com/zhongxinghong/PKUElectiveCaptcha2021Spring)
 - 具有较为完善的错误捕获机制，程序鲁棒性好
 - 提供额外的监视器线程，开启后可以通过端口监听进程运行状况，为服务器上部署提供可能
 - 支持多进程下的多账号/多身份选课
 - 可以自定义额外的选课规则，目前支持互斥规则和延迟规则
 
-
 ## 安装
 
 ### Python 3
 
-该项目至少需要 Python 3，可以从 [Python 官网](https://www.python.org/) 下载并安装（项目开发环境为 Python 3.6.6，经测试在 Python 3.5.7 下可以正常运行）
+该项目至少需要 Python 3，可以从 [Python 官网](https://www.python.org/) 下载并安装（项目开发环境为 Python 3.6.8）
 
 例如在 Linux 下运行：
 ```console
 $ apt-get install python3
 ```
-如果你需要在服务器上部署一个隔离的 Python 环境，你可以考虑使用 [pyenv](https://github.com/pyenv/pyenv) 和 [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv) 来安装 Python 3 及依赖包
 
 ### Repo
 
-下载这个 repo 至本地。点击右上角的 `Clone or download` 即可下载
+下载这个 repo 至本地。点击右上角的 `Code -> Download ZIP` 即可下载
 
 对于 git 命令行：
 ```console
@@ -41,14 +50,14 @@ $ git clone https://github.com/zhongxinghong/PKUAutoElective.git
 
 安装 PyTorch 外的依赖包（该示例中使用清华镜像源以加快下载速度）
 ```console
-$ pip3 install requests lxml simplejson Pillow numpy flask joblib -i https://pypi.tuna.tsinghua.edu.cn/simple
+$ pip3 install requests lxml Pillow opencv-python numpy flask -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-安装 PyTorch，从 [PyTorch 官网](https://pytorch.org/) 中选择合适的条件获得下载命令，然后复制粘贴到命令行中运行即可下载安装。（注：本项目不需要 cuda，当然你可以安装带 gpu 优化的版本）
+安装 PyTorch，从 [PyTorch 官网](https://pytorch.org/) 中选择合适的条件获得下载命令，然后复制粘贴到命令行中运行即可下载安装 (CUDA 可以为 None)，PyTorch 版本必须要大于 1.4.x，否则无法读取 CNN 模型
 
 示例选项：
 
-- `PyTorch Build`:  Stable (1.4)
+- `PyTorch Build`:  Stable (1.8.0)
 - `Your OS`: Windows
 - `Package`: Pip
 - `Language`: Python
@@ -56,12 +65,29 @@ $ pip3 install requests lxml simplejson Pillow numpy flask joblib -i https://pyp
 
 复制粘贴所得命令在命令行中运行：
 ```console
-$ pip3 install torch==1.4.0+cpu torchvision==0.5.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+pip3 install torch==1.8.0+cpu torchvision==0.9.0+cpu torchaudio===0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
-PyTorch 安装时间可能比较长，需耐心等待。
+该项目不依赖 torchvision 和 torchaudio，因此你可以只安装 torch
+```console
+pip3 install torch==1.8.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+```
 
-如果实在无法安装，可以考虑用其他方式安装 PyTorch，详见附页 [PyTorch 安装](#PyTorch-安装)
+PyTorch 安装时间可能比较长，需耐心等待
+
+### 验证码识别模块测试
+
+这个测试旨在检查与验证码识别模块相关的依赖包是否正确安装，尤其是 PyTorch, OpenCV
+```console
+$ cd test/
+$ python3 test_cnn.py
+
+Captcha('er47') True
+Captcha('rskh') True
+Captcha('uesg') True
+Captcha('skwc') True
+Captcha('mmfk') True
+```
 
 ## 基本用法
 
@@ -91,7 +117,7 @@ $ python3 main.py -h
 
 Usage: main.py [options]
 
-PKU Auto-Elective Tool v3.0.1 (2020.02.17)
+PKU Auto-Elective Tool v6.0.0 (2021.03.12)
 
 Options:
   --version             show program's version number and exit
@@ -154,7 +180,6 @@ server {
         proxy_pass  http://127.0.0.1:7074;
     }
 }
-
 ```
 在这个示例中，通过访问 `http://10.123.124.125:12345` 即可以查看运行状态
 
@@ -257,17 +282,16 @@ GET  /stat/loop     查看与 loop 线程相关的状态
 
 ## 补充说明
 
-1. 一直遇到 `[310] 您尚未登录或者会话超时,请重新登录` 错误，可能是因为您是双学位账号，但是没有在 `config.ini` 中设置 `dual_degree = true`
+1. 一直遇到 `[310] 您尚未登录或者会话超时,请重新登录` 错误，可能是因为你是双学位账号，但是没有在 `config.ini` 中设置 `dual_degree = true`
 2. 不要修改 `config.ini` 的编码，确保它能够以 `utf-8-sig` 编码被 Python 解析。如果遇到编码问题，请重新创建一个 `config.ini`，之后不要使用 `记事本 Notepad` 进行编辑，应改用更加专业的文本编辑工具或者代码编辑器，例如 `NotePad ++`, `Sublime Text`, `VSCode` 等，并以 `无 BOM 的 UTF-8` 编码保存文件
-3. 该项目适用于：课在有空位的时候可以选，但是当前满人无法选上，需要长时间不断刷新页面。对于有名额但是网络拥堵的情况（比如到达某个特定的选课时段节点时），程序选课 **不一定比手选快**，因为该项目每次启动前都会先登录一次 IAAA，这个请求在网络阻塞时可能很难完成，如果你已经通过浏览器提前登入了选课网，那么手动选课可能是个更好的选择。
+3. 该项目适用于：课在有空位的时候可以选，但是当前满人无法选上，需要长时间不断刷新页面。对于有名额但是网络拥堵的情况（比如到达某个特定的选课时段节点时），程序选课 **不一定比手选快**，因为该项目每次启动前都会先登录一次 IAAA，这个请求在网络阻塞时可能很难完成，如果你已经通过浏览器提前登入了选课网，那么手动选课可能是个更好的选择
+4. 不要使用过低的刷新间隔，以免对选课网服务器造成压力，建议时间间隔不小于 4 秒
+5. 选课网存在 IP 级别的限流，访问过于频繁可能会导致 IP 被封禁
 
 
 ## 未知错误警告
 
 1. 在 2019.02.22 下午 5:00 跨院系选课名额开放的时刻，有人使用该项目试图抢 `程设3班`，终端日志表明，程序运行时发现 `程设3班` 存在空位，并成功选上，但人工登录选课网后发现，实际选上了 `程设4班（英文班）` 。使用者并未打算选修英文班，且并未将 `程设4班` 加入到 `course.csv` （从 v3.0.0 起已合并入 `config.ini`） 中，而仅仅将其添加到教学网　“选课计划”　中，在网页中与 `程设3班` 相隔一行。从本项目的代码逻辑上我可以断定，网页的解析部分是不会出错的，对应的提交选课链接一定是 `程设3班` 的链接。可惜没有用文件日志记录网页结构，当时的请求结果已无从考证。从这一极其奇怪的现象中我猜测，北大选课网的数据库或服务器有可能存在 **线程不安全** 的设计，也有可能在高并发时会偶发 **Race condition** 漏洞。因此，我在此 **强烈建议： (1) 不要把同班号、有空位，但是不想选的课放在选课计划内； (2) 不要在学校服务器遭遇突发流量的时候拥挤选课。** 否则很有可能遭遇 **未知错误！**
-
-2. 根据 [Issue #30](https://github.com/zhongxinghong/PKUAutoElective/issues/30) 所言，这个程序有退课的可能，但我未亲身经历过，且当事人并没有留下详细的日志，因此我并不清楚具体原因是什么，只能猜测是选课网存在 **未知的 bug**。新的版本对这种异常情况的发生做了一些防护，如果你遇到了与之相关的错误，请你保存好你的文件日志，并且给我发 Issue
-
 
 ## 历史更新信息
 
@@ -279,106 +303,10 @@ GET  /stat/loop     查看与 loop 线程相关的状态
 
 ## 责任须知
 
-- 本项目仅供参考学习，你可以修改和使用这个项目，但请自行承担由此造成的一切后果
+- 你可以修改和使用这个项目，但请自行承担由此造成的一切后果
 - 严禁在公共场合扩散这个项目，以免给你我都造成不必要的麻烦
 
 ## 证书
 
-- PKUElectiveCaptcha [MIT LICENSE](https://github.com/zhongxinghong/PKUElectiveCaptcha/blob/master/LICENSE)
+- PKUElectiveCaptcha2021Spring [MIT LICENSE](https://github.com/zhongxinghong/PKUElectiveCaptcha2021Spring/blob/master/LICENSE)
 - PKUAutoElective [MIT LICENSE](https://github.com/zhongxinghong/PKUAutoElective/blob/master/LICENSE)
-
-
-## 附录
-
-### PyTorch 安装
-
-#### 官方渠道
-
-通过 [PyTorch 官网](https://pytorch.org/) 获取下载渠道，此处不赘述
-
-#### Conda 安装
-
-不再使用 pip 而是采用 conda 安装依赖包，切换成 [清华镜像源](https://mirrors.tuna.tsinghua.edu.cn/help/anaconda/) 来提高下载速度。我未使用过 conda，所以在此不能多做介绍了，你可以在 [conda 官网](https://docs.conda.io/projects/conda/en/latest/) 上了解一下 conda 的使用方法
-
-#### 手动安装
-
-可以从清华镜像站的 [Anaconda 镜像源](https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch) 中下载相应版本的 PyTorch 后手动安装
-
-Linux 示例环境：
-
-- Debian 10 amd64
-- Python 3.6.6
-
-确保已安装 `curl` 和 `git`
-```console
-$ apt-get install curl git
-```
-
-在 `linux_64/` 下选择下载 `PyTorch 1.4.0 (cpu only)` 的版本并解压
-```console
-$ mkdir pytorch && cd pytorch
-$ curl https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/linux-64/pytorch-1.4.0-py3.6_cpu_0.tar.bz2 | tar xjv
-```
-
-复制相关文件到 Python3 第三方库的导入路径下
-```console
-$ cp -r ./lib/python*/site-packages/* $(python3 -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")
-```
-
-安装 PyTorch 的依赖库
-```console
-$ python3 -c "import json; [print(d) for d in json.load(open('./info/index.json'))['depends']]" | egrep -v "python" > requirements.txt
-$ pip3 install -r requirements.txt
-```
-
-测试 PyTorch 是否安装成功
-```console
-$ pip3 show torch
-$ python3 -c "import torch; print(torch.__version__)"
-```
-
-测试 CNN 模型是否可以正常使用
-```console
-$ git clone https://github.com/zhongxinghong/PKUAutoElective.git --depth=1
-$ cd PKUAutoElective/
-$ python3 -c \
-"import base64; from autoelective.captcha import CaptchaRecognizer;
-c = CaptchaRecognizer().recognize(base64.b64decode(
-('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHR'
-'ofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyI'
-'RwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/'
-'wAARCAAWADoDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8Q'
-'AtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2'
-'JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4e'
-'XqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ'
-'2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQo'
-'L/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUv'
-'AVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0d'
-'XZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU'
-'1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD0/VryFdJlm1caravpWnt'
-'fRuz2vnyskal5YwhP7yPJRhhYz5pUh0YVj6L8Rk1zUbCeLwb4rtGvJUj+2LpqtDLAS4iMkp'
-'58sCTzPl+6c4LDO6x4ssPtXw81y6muvO1vTtKuLS4uJD97ETeYTFHJtTzUYOFPrEzKTGoGX'
-'8PfDesal4c8OX2oeLLTV9BFkoGlPpUDKoMDRGPzck5XcyE9ThlPUigCvP4y0Wyt/Eel+GvB'
-'XieS7V57C5v9LshulnQMu5rgFnL5bdvYM3zbiCTzqeIfFWneFPiKJRp8+qXV7afZzDYW7XN'
-'4si4comVASMJtd4xITlo3CLuZ35fwH/wmqa54ltvD99odxZ2niW5kvo9QkZLq4z8pz5aFUV'
-'sZDBR8yHgqCp0PHKf2x8QND0mGf+x/E2m2jX51yKHc08KqcxQQKzNLufefLY5Co+N4Y5ANy'
-'1+Jnhy28MX2uxW2smPS0S1vrWd91xassgjRZI5JM72MjHfzuCMGbcoWpPBXiv8A4TWVF1Tw'
-'vfJJFF9ottTutL8mCaPdE67NzvtbcEYAMwPlB8g4C+aa9qt3B8KfGXhi6trS71KwvY5NW1O'
-'xlQxyzT3CyByNqkkEPEwxlSiAAgnZ6PYeIdVtoft/jifRoTauLqyhsIJI5XQQsZ32XKhyEj'
-'lDHyvmG11OTlCAdRbXmmWnhW2m0i4jhtLi3MunBopJchkaVQkOQ7AKCREuCFXaoAAxXgfxb'
-'ZW8Vqml6NcpCgjWeTVp1aUAY3ENA5BOM4LueeWbqSGXRrnXtOstO8uKWDTBNZz2k8GwWrSR'
-'5RY9xOxvKQbgm0DhXBrLv/C32jUbmf8A4QDwbdeZK7+fcT4klySdzj7K3zHqeTyep60AbEn'
-'hr+0rV4tXvr6dZN0U0QusRzw+VJFtYIiAbhIZGwAQ5ADFUQDj9N+GHg228RyXmieH83Wlah'
-'BFILnUJkSFlRZ/NjxvLtiWMbXwp2duSxRQBqW+lXPh6ZtDsLbTb681BF1Z5bzeiXN3HNF9q'
-'lf7wiLBoWjCKQrBjjAGbFz4a0Px1ollHrGmR6ilte3Mcss00sTpIjyJK0eGZtjSJxGXwF2/'
-'3AtFFAFiz+HmgW3hi68NvZxnR7h9z2cW6NSRIXVi+4yM+PLUkuQfLGAo4rUTSrx7xhe3893'
-'a/azdwMJjbvb4CBISIgoljz5hO8/3QQ/3gUUAR6RMyvq9naCOU2mp7GDxrAAJVjnflAQ5Am'
-'Yg7VLHAbnMjblFFAH/2Q==').encode('utf-8'))); print(c, c.code == 'EF8F');"
-```
-正常输出为 `Captcha('EF8F') True`
-
-清除安装包
-```console
-$ cd ../
-$ rm pytorch/ -rf
-```

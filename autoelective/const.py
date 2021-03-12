@@ -13,7 +13,7 @@ ERROR_LOG_DIR           = absp("../log/error")
 REQUEST_LOG_DIR         = absp("../log/request/")
 WEB_LOG_DIR             = absp("../log/web/")
 
-CNN_MODEL_FILE          = absp("./captcha/model/cnn.pt.gz")
+CNN_MODEL_FILE          = absp("../model/cnn.20210311.1.pt")
 USER_AGENTS_TXT_GZ      = absp("../user_agents.txt.gz")
 USER_AGENTS_USER_TXT    = absp("../user_agents.user.txt")
 DEFAULT_CONFIG_INI      = absp("../config.ini")
@@ -47,7 +47,6 @@ class ElectiveURL(object):
     Host
     SSOLoginRedirect        重定向链接
     SSOLogin                sso登录
-    SSOLoginDualDegree      sso登录（双学位）
     Logout                  登出
     HelpController          选课帮助页
     ShowResults             选课结果页

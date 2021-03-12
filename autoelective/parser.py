@@ -36,7 +36,7 @@ def get_errInfo(tree):
     assert len(tds) == 1
     td = tds[0]
     strong = td.getchildren()[0]
-    assert strong.tag == 'strong' and strong.text == '出错提示:'
+    assert strong.tag == 'strong' and strong.text in ('出错提示:', '提示:')
     return "".join(td.xpath('./text()')).strip()
 
 def get_tips(tree):

@@ -1,10 +1,10 @@
 .vscode/
 __pycache__/
-/test
 /log
 /cache
 /config
 /bin
-*.bac
+/archive
+/tmp
 config.ini
 user_agents.user.txt

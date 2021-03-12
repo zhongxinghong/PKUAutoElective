@@ -1,6 +1,12 @@
 Migration Guide
 ====================
 
+v5.0.1 -> 6.0.0
+------------------
+- 新的验证码识别模块依赖 opencv，安装命令 `pip3 install opencv-python`
+- 新的验证码识别模块不再依赖于 joblib，并删除了对 simplejson 的可选依赖
+- PyTorch 版本需保证大于 1.4.x，否则无法读取 CNN 模型
+
 v3.0.8 -> 5.0.1
 ------------------
 - `config.ini` 中添加 `elective_client_max_life` 用于设置 elective 客户端的存活时间，到期后 elective 会话会被主动关闭

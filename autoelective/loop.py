@@ -22,7 +22,7 @@ from .parser import get_tables, get_courses, get_courses_with_detail, get_sida
 from .hook import _dump_request
 from .iaaa import IAAAClient
 from .elective import ElectiveClient
-from .const import CAPTCHA_CACHE_DIR, USER_AGENT_LIST, WEB_LOG_DIR
+from .const import CAPTCHA_CACHE_DIR, USER_AGENT_LIST, WEB_LOG_DIR, CNN_MODEL_FILE
 from .exceptions import *
 from ._internal import mkdir
 
@@ -51,7 +51,7 @@ config.check_supply_cancel_page(supply_cancel_page)
 _USER_WEB_LOG_DIR = os.path.join(WEB_LOG_DIR, config.get_user_subpath())
 mkdir(_USER_WEB_LOG_DIR)
 
-recognizer = CaptchaRecognizer()
+recognizer = CaptchaRecognizer(CNN_MODEL_FILE)
 
 electivePool = Queue(maxsize=elective_client_pool_size)
 reloginPool = Queue(maxsize=elective_client_pool_size)
@@ -510,9 +510,9 @@ def run_elective_loop():
                     captcha = recognizer.recognize(r.content)
                     cout.info("Recognition result: %s" % captcha.code)
 
-                    r = elective.get_Validate(captcha.code)
+                    r = elective.get_Validate(username, captcha.code)
                     try:
-                        res = r.json()["valid"]  # 可能会返回一个错误网页 ...
+                        res = r.json()["valid"]  # 可能会返回一个错误网页
                     except Exception as e:
                         ferr.error(e)
                         raise OperationFailedError(msg="Unable to validate captcha")

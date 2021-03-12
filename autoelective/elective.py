@@ -161,11 +161,10 @@ class ElectiveClient(BaseClient):
         headers = _get_headers_with_referer(kwargs, ElectiveURL.SupplyCancel)
         headers["Cache-Control"] = "max-age=0"
         r = self._get(
-            url=ElectiveURL.Supplement + "?netui_row=%s" % quote("electResultLisGrid;0"),
+            url=ElectiveURL.Supplement,
             params={
-                # "netui_row": "electResultLisGrid;0", # leave this field in url for duplicate key 'netui_row'
-                "netui_row": "electableListGrid;%s" % ( (page - 1) * 50 ),
-                "conflictCourse": "",
+                "netui_pagesize": "electableListGrid;20",
+                "netui_row": "electableListGrid;%s" % ( (page - 1) * 20 ),
             },
             headers=headers,
             hooks=_hooks_check_title,
@@ -187,7 +186,7 @@ class ElectiveClient(BaseClient):
         )
         return r
 
-    def get_Validate(self, captcha, **kwargs):
+    def get_Validate(self, username, code, **kwargs):
         """ 验证用户输入的验证码 """
         headers = _get_headers_with_referer(kwargs, ElectiveURL.SupplyCancel)
         headers["Accept"] = "application/json, text/javascript, */*; q=0.01"
@@ -197,7 +196,8 @@ class ElectiveClient(BaseClient):
         r = self._post(
             url=ElectiveURL.Validate,
             data={
-                "validCode": captcha,
+                "xh": username,
+                "validCode": code,
             },
             headers=headers,
             hooks=_hooks_check_status_code,
