@@ -393,7 +393,7 @@ def run_elective_loop():
 
                 cout.info("Get SupplyCancel page %s" % supply_cancel_page)
 
-                r = page_r = elective.get_SupplyCancel()
+                r = page_r = elective.get_SupplyCancel(username)
                 tables = get_tables(r._tree)
                 try:
                     elected = get_courses(tables[1])
@@ -424,7 +424,7 @@ def run_elective_loop():
                         raise OperationFailedError(msg="unable to get normal Supplement page %s" % supply_cancel_page)
 
                     cout.info("Get Supplement page %s" % supply_cancel_page)
-                    r = page_r = elective.get_supplement(page=supply_cancel_page) # 双学位第二页
+                    r = page_r = elective.get_supplement(username, page=supply_cancel_page) # 双学位第二页
                     tables = get_tables(r._tree)
                     try:
                         elected = get_courses(tables[1])
