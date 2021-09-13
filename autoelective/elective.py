@@ -143,19 +143,22 @@ class ElectiveClient(BaseClient):
         )
         return r
 
-    def get_SupplyCancel(self, **kwargs):
+    def get_SupplyCancel(self, username, **kwargs):
         """ 补退选 """
         headers = _get_headers_with_referer(kwargs)
         headers["Cache-Control"] = "max-age=0"
         r = self._get(
             url=ElectiveURL.SupplyCancel,
+            params={
+                "xh": username
+                },
             headers=headers,
             hooks=_hooks_check_title,
             **kwargs,
         )
         return r
 
-    def get_supplement(self, page=1, **kwargs):
+    def get_supplement(self, username, page=1, **kwargs):
         """ 补退选（第二页及以后） """
         assert page > 0
         headers = _get_headers_with_referer(kwargs, ElectiveURL.SupplyCancel)
@@ -164,7 +167,8 @@ class ElectiveClient(BaseClient):
             url=ElectiveURL.Supplement,
             params={
                 "netui_pagesize": "electableListGrid;20",
-                "netui_row": "electableListGrid;%s" % ( (page - 1) * 20 ),
+                "netui_row": "electableListGrid;%s" % ((page - 1) * 20),
+                "xh": username
             },
             headers=headers,
             hooks=_hooks_check_title,
