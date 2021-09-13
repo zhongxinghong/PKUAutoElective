@@ -432,7 +432,7 @@ def run_elective_loop():
                     except IndexError as e:
                         cout.warning("IndexError encountered")
                         cout.info("Get SupplyCancel first to prevent empty table returned")
-                        _ = elective.get_SupplyCancel() # 遇到空页面时请求一次补退选主页，之后就可以不断刷新
+                        _ = elective.get_SupplyCancel(username) # 遇到空页面时请求一次补退选主页，之后就可以不断刷新
                     else:
                         break
                     finally:
