@@ -1,6 +1,6 @@
 lxml==4.3.0
 requests==2.22.0
-Flask==1.0.2
+Flask==2.3.2
 numpy==1.18.2
 opencv-python==4.4.0.42
 Pillow==7.0.0
