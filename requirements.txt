@@ -1,5 +1,5 @@
 lxml==4.3.0
-requests==2.22.0
+requests==2.31.0
 Flask==1.0.2
 numpy==1.18.2
 opencv-python==4.4.0.42
