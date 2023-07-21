@@ -4,4 +4,4 @@ Flask==1.0.2
 numpy==1.18.2
 opencv-python==4.4.0.42
 Pillow==7.0.0
-torch==1.8.0+cpu
+torch==1.13.1
